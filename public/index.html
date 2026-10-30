@@ -13,8 +13,8 @@
     :root { --cat-size: clamp(96px, 30vw, 150px); }
     #cat { position: fixed; right: calc(16px + env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom)); width: var(--cat-size); height: var(--cat-size); display: grid; place-items: center; font-size: calc(var(--cat-size) * .6); line-height: 1; transform-origin: 50% 100%; pointer-events: none; animation: breathe 3s ease-in-out infinite; }
     #cat img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .35)); -webkit-user-drag: none; }
-    #bubble { position: fixed; right: calc(16px + env(safe-area-inset-right)); bottom: calc(24px + var(--cat-size) + env(safe-area-inset-bottom)); max-width: min(70vw, 320px); padding: 10px 14px; border-radius: 14px; background: rgba(255, 255, 255, .92); color: #111; pointer-events: none; transform-origin: calc(100% - 40px) 100%; }
-    #bubble::after { content: ''; position: absolute; right: 36px; bottom: -8px; border: 8px solid transparent; border-bottom: 0; border-top-color: rgba(255, 255, 255, .92); }
+    #bubble { position: fixed; right: calc(16px + env(safe-area-inset-right)); bottom: calc(24px + var(--cat-size) + env(safe-area-inset-bottom)); max-width: min(70vw, 320px); padding: 10px 14px; border-radius: 16px; background: rgba(255, 255, 255, .95); color: #1c1c1e; font-size: 16px; font-weight: 500; line-height: 1.35; box-shadow: 0 6px 20px rgba(0, 0, 0, .25); pointer-events: none; transform-origin: calc(100% - 36px) 100%; }
+    #bubble::after { content: ''; position: absolute; right: 30px; bottom: -6px; width: 12px; height: 12px; background: inherit; border-radius: 0 0 3px 0; transform: rotate(45deg); }
     #bubble:empty { display: none; }
     #bubble.is-pop { animation: pop .18s ease-out; }
     /* Each reaction plays once, then the cat settles back into breathing. */
@@ -29,7 +29,7 @@
     @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
     @keyframes wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-6deg); } 75% { transform: rotate(6deg); } }
     @keyframes tilt { 0%, 100% { transform: rotate(0); } 40% { transform: rotate(-6deg); } }
-    @keyframes pop { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: scale(1); } }
+    @keyframes pop { from { opacity: 0; transform: translateY(6px) scale(.96); } to { opacity: 1; transform: none; } }
     @media (prefers-reduced-motion: reduce) { #cat, #cat[class], #bubble.is-pop { animation: none; } }
     #start { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); font: inherit; padding: 12px 20px; border: 0; border-radius: 10px; background: #f5a623; color: #111; }
     #debug-crop { position: fixed; left: calc(8px + env(safe-area-inset-left)); top: calc(8px + env(safe-area-inset-top)); width: 120px; border: 2px solid #f5a623; pointer-events: none; }
