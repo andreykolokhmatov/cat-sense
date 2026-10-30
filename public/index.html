@@ -117,10 +117,9 @@
     .info-head h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.01em; outline: none; }
     .info-head p { margin: 2px 0 0; font-size: 14px; color: #6e6e73; }
     .info-list { margin: 0; padding: 0; list-style: none; }
-    .info-list li { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-top: 1px solid rgba(0, 0, 0, .07); font-size: 15px; line-height: 1.4; }
+    .info-list li { padding: 12px 0; border-top: 1px solid rgba(0, 0, 0, .07); font-size: 15px; line-height: 1.4; }
     .info-list li:first-child { border-top: 0; }
     .info-list b { font-weight: 700; }
-    .info-icon { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; background: #fff1e3; font-size: 20px; line-height: 1; }
     .info-body form { position: sticky; bottom: 0; margin: 4px -20px 0; padding: 12px 20px 0; background: linear-gradient(rgba(255, 255, 255, 0), #fff 14px); }
     .info-body form button { width: 100%; min-height: 50px; border: 0; border-radius: 999px; background: var(--orange); color: var(--ink); font: inherit; font-size: 17px; font-weight: 700; }
     #intro { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom)); background: radial-gradient(circle at 50% 45%, #2a1d14 0%, #111 70%); text-align: center; }
@@ -181,11 +180,11 @@
         </div>
       </div>
       <ul class="info-list">
-        <li><span class="info-icon" aria-hidden="true">👆</span><div><b>Тапни</b> по предмету или человеку, и кот скажет, что он об этом думает.</div></li>
-        <li><span class="info-icon" aria-hidden="true">😾</span><div><b>Удержи палец</b> на человеке, и кот обидится. Обида проходит, когда человек уходит из кадра.</div></li>
-        <li><span class="info-icon" aria-hidden="true">👁️</span><div><b>Глазами кошки.</b> Красный и зелёный для кошки почти один цвет, и мир она видит мутнее нас. Зато видит в темноте и замечает любое движение.</div></li>
-        <li><span class="info-icon" aria-hidden="true">🔒</span><div><b>Лица не покидают телефон.</b> Эмоцию кот угадывает прямо здесь. Предмет узнаёт нейросеть по кусочку кадра, лица на нём закрашены.</div></li>
-        <li><span class="info-icon" aria-hidden="true">📸</span><div><b>«Сохранить»</b> делает фото с котом и его фразой. Фото остаётся только у тебя.</div></li>
+        <li><b>Тапни</b> по предмету или человеку, и кот скажет, что он об этом думает.</li>
+        <li><b>Удержи палец</b> на человеке, и кот обидится. Обида проходит, когда человек уходит из кадра.</li>
+        <li><b>Глазами кошки.</b> Красный и зелёный для кошки почти один цвет, и мир она видит мутнее нас. Зато видит в темноте и замечает любое движение.</li>
+        <li><b>Лица не покидают телефон.</b> Эмоцию кот угадывает прямо здесь. Предмет узнаёт нейросеть по кусочку кадра, лица на нём закрашены.</li>
+        <li><b>«Сохранить»</b> делает фото с котом и его фразой. Фото остаётся только у тебя.</li>
       </ul>
       <form method="dialog"><button>Понятно</button></form>
     </div>
