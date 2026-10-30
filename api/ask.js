@@ -2,7 +2,7 @@ import { EMOTION_LABELS, OBJECT_LABELS } from '../public/js/logic/labels.js';
 import { MOODS } from '../public/js/logic/pickPhrase.js';
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
-const DEFAULT_MODEL = 'gemini-3.8-flash';
+const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 // The phone gives up after 6 s and the upload eats part of that, so the model gets less.
 export const GEMINI_TIMEOUT_MS = 4500;
 // A 512 px JPEG crop is ~100 KB in base64; anything far bigger is not from our page.
@@ -83,7 +83,7 @@ export function geminiRequest(ask, model = DEFAULT_MODEL) {
     contents: [{ role: 'user', parts }],
     generationConfig: {
       temperature: 1,
-      maxOutputTokens: 512,
+      maxOutputTokens: 1024,
       responseMimeType: 'application/json',
       responseSchema: RESPONSE_SCHEMA,
       thinkingConfig: thinkingConfig(model),

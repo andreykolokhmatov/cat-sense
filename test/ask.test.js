@@ -135,7 +135,7 @@ test('handler returns the model reply and keeps the key out of the URL', async (
   const res = await call(handler, cupAsk);
   assert.equal(res.statusCode, 200);
   assert.deepEqual(res.body, { text: 'Хочу воды!', mood: 'want' });
-  assert.match(calls[0].url, /gemini-3\.8-flash:generateContent$/);
+  assert.match(calls[0].url, /gemini-3\.5-flash-lite:generateContent$/);
   assert.ok(!calls[0].url.includes('test-key'));
   assert.equal(calls[0].options.headers['x-goog-api-key'], 'test-key');
 });
