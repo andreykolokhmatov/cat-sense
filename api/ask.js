@@ -2,7 +2,7 @@ import { EMOTION_LABELS, OBJECT_LABELS } from '../public/js/logic/labels.js';
 import { MOODS } from '../public/js/logic/pickPhrase.js';
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+const DEFAULT_MODEL = 'gemini-3.8-flash';
 // The phone gives up after 6 s and the upload eats part of that, so the model gets less.
 export const GEMINI_TIMEOUT_MS = 4500;
 // A 512 px JPEG crop is ~100 KB in base64; anything far bigger is not from our page.
@@ -69,7 +69,13 @@ export function userPrompt(ask) {
   return `Тебе показали предмет на картинке. Детектор думает, что это ${OBJECT_LABELS[ask.label]}.`;
 }
 
-export function geminiRequest(ask) {
+// Thinking adds seconds the phone does not have; a one-liner does not need it. Gemini 2.x
+// turns it off with a budget, Gemini 3+ only takes a level.
+export function thinkingConfig(model) {
+  return /^gemini-2\./.test(model) ? { thinkingBudget: 0 } : { thinkingLevel: 'minimal' };
+}
+
+export function geminiRequest(ask, model = DEFAULT_MODEL) {
   const parts = [{ text: userPrompt(ask) }];
   if (ask.kind === 'object') parts.unshift({ inlineData: { mimeType: 'image/jpeg', data: ask.image } });
   return {
@@ -80,8 +86,7 @@ export function geminiRequest(ask) {
       maxOutputTokens: 512,
       responseMimeType: 'application/json',
       responseSchema: RESPONSE_SCHEMA,
-      // Thinking adds seconds the phone does not have; a one-liner does not need it.
-      thinkingConfig: { thinkingBudget: 0 },
+      thinkingConfig: thinkingConfig(model),
     },
   };
 }
@@ -149,7 +154,7 @@ export function createHandler({
       const response = await fetchFn(`${GEMINI_URL}/${encodeURIComponent(model)}:generateContent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-        body: JSON.stringify(geminiRequest(ask)),
+        body: JSON.stringify(geminiRequest(ask, model)),
         signal: AbortSignal.timeout(timeoutMs),
       });
       const data = await response.json();

@@ -7,6 +7,7 @@ import {
   geminiRequest,
   parseAsk,
   parseReply,
+  thinkingConfig,
   userPrompt,
 } from '../api/ask.js';
 
@@ -98,6 +99,12 @@ test('geminiRequest asks for JSON with the mood enum', () => {
   assert.match(systemInstruction.parts[0].text, /кот/);
 });
 
+test('thinking is switched off in the form each model generation accepts', () => {
+  assert.deepEqual(thinkingConfig('gemini-2.5-flash'), { thinkingBudget: 0 });
+  assert.deepEqual(thinkingConfig('gemini-3.8-flash'), { thinkingLevel: 'minimal' });
+  assert.deepEqual(geminiRequest(cupAsk).generationConfig.thinkingConfig, { thinkingLevel: 'minimal' });
+});
+
 test('parseReply returns trimmed text and mood', () => {
   assert.deepEqual(parseReply(geminiData({ text: '  Хочу воды!  ', mood: 'want' })), { text: 'Хочу воды!', mood: 'want' });
 });
@@ -128,7 +135,7 @@ test('handler returns the model reply and keeps the key out of the URL', async (
   const res = await call(handler, cupAsk);
   assert.equal(res.statusCode, 200);
   assert.deepEqual(res.body, { text: 'Хочу воды!', mood: 'want' });
-  assert.match(calls[0].url, /gemini-2\.5-flash:generateContent$/);
+  assert.match(calls[0].url, /gemini-3\.8-flash:generateContent$/);
   assert.ok(!calls[0].url.includes('test-key'));
   assert.equal(calls[0].options.headers['x-goog-api-key'], 'test-key');
 });
