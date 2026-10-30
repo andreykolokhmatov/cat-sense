@@ -32,8 +32,8 @@ test('askBody gives null for an object without an image', () => {
   assert.equal(askBody(cup, null), null);
 });
 
-test('default timeout is 6 seconds', () => {
-  assert.equal(ASK_TIMEOUT_MS, 6000);
+test('default timeout is 9.5 seconds', () => {
+  assert.equal(ASK_TIMEOUT_MS, 9500);
 });
 
 test('valid reply is returned and the request is a JSON POST', async () => {

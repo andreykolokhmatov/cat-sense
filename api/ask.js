@@ -3,8 +3,9 @@ import { MOODS } from '../public/js/logic/pickPhrase.js';
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
-// The phone gives up after 6 s and the upload eats part of that, so the model gets less.
-export const GEMINI_TIMEOUT_MS = 4500;
+// The phone gives up after 9.5 s and the upload eats part of that, so the model gets less.
+// Flash-Lite under load often needs 5-7 s; a real reply is worth the wait behind the dots.
+export const GEMINI_TIMEOUT_MS = 8000;
 // A 512 px JPEG crop is ~100 KB in base64; anything far bigger is not from our page.
 export const MAX_IMAGE_CHARS = 400_000;
 export const MAX_TEXT_CHARS = 200;

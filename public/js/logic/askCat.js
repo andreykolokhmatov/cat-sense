@@ -1,6 +1,6 @@
 import { MOODS, pickPhrase } from './pickPhrase.js';
 
-export const ASK_TIMEOUT_MS = 6000;
+export const ASK_TIMEOUT_MS = 9500;
 
 // null means there is nothing safe to send. A person never carries an image, even if one
 // was passed: only the emotion name may leave the phone.
