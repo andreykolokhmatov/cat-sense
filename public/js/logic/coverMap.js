@@ -34,3 +34,12 @@ export function videoToScreen([x, y, width, height], view, video) {
   const { scale, offsetX, offsetY } = transform;
   return [x * scale + offsetX, y * scale + offsetY, width * scale, height * scale];
 }
+
+// The part of the frame that object-fit: cover leaves on screen, in video pixels.
+export function visibleSource(view, video) {
+  const transform = coverTransform(view, video);
+  if (!transform) return null;
+  const sw = view.width / transform.scale;
+  const sh = view.height / transform.scale;
+  return { sx: (video.width - sw) / 2, sy: (video.height - sh) / 2, sw, sh };
+}

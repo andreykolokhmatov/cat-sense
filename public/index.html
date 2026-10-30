@@ -4,21 +4,51 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Кошачье чутьё</title>
+  <meta name="theme-color" content="#FA9A3C">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Чутьё">
+  <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/assets/cat/curious.webp" type="image/webp">
+  <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; background: #111; color: #eee; font: 16px/1.4 system-ui, sans-serif; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
     [hidden] { display: none !important; }
-    video, #overlay { position: fixed; inset: 0; width: 100%; height: 100%; height: 100dvh; }
-    video { object-fit: cover; filter: saturate(.5) brightness(1.1) contrast(.95) blur(.6px); }
+    :root {
+      --orange: #FA9A3C;
+      --ink: #1c1c1e;
+      --screen-h: 100vh;
+      --panel-pad: 12px;
+      --panel-h: calc(var(--screen-h) * .3 + env(safe-area-inset-bottom));
+      --camera-h: calc(var(--screen-h) - var(--panel-h));
+      --cat-size: min(42vw, 180px, calc(var(--panel-h) - env(safe-area-inset-bottom) - 2 * var(--panel-pad)));
+      --cat-blur: 1px;
+    }
+    @supports (height: 100dvh) { :root { --screen-h: 100dvh; } }
+    /* The overlay must cover exactly the video box: taps are mapped through the video's rect. */
+    video, #overlay { position: fixed; top: 0; left: 0; width: 100%; height: var(--camera-h); }
+    video { object-fit: cover; }
+    body.is-cat video { filter: url(#cat-vision) blur(var(--cat-blur)); }
+    /* Fallback for a black or stuttering SVG filter on iPhone: no colour-blind simulation live. */
+    body.is-cat.is-cat-css video { filter: saturate(.5) brightness(1.1) contrast(.95) blur(.6px); }
     #overlay { touch-action: manipulation; }
-    :root { --cat-size: clamp(96px, 30vw, 150px); }
-    #cat { position: fixed; right: calc(16px + env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom)); width: var(--cat-size); height: var(--cat-size); display: grid; place-items: center; font-size: calc(var(--cat-size) * .6); line-height: 1; transform-origin: 50% 100%; pointer-events: none; animation: breathe 3s ease-in-out infinite; }
+    #panel { position: fixed; left: 0; right: 0; bottom: 0; height: var(--panel-h); box-sizing: border-box; display: flex; align-items: center; padding: var(--panel-pad) calc(var(--panel-pad) + env(safe-area-inset-right)) calc(var(--panel-pad) + env(safe-area-inset-bottom)) calc(var(--panel-pad) + env(safe-area-inset-left)); background: var(--orange); }
+    .panel-buttons { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 8px; width: calc(100% - var(--cat-size) - 8px); height: 100%; max-height: 180px; }
+    .panel-buttons button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-width: 0; min-height: 44px; padding: 6px; border: 0; border-radius: 16px; background: rgba(255, 255, 255, .3); color: var(--ink); font: inherit; font-size: 14px; font-weight: 650; line-height: 1.1; transition: transform .1s, background-color .2s; }
+    .panel-buttons button:active { transform: scale(.96); }
+    .panel-buttons button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+    .panel-buttons svg { width: 26px; height: 26px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    #save-button { grid-column: 1 / -1; flex-direction: row; gap: 8px; background: rgba(255, 255, 255, .92); }
+    #vision-button[aria-pressed="false"] .icon-cat, #vision-button[aria-pressed="true"] .icon-human { display: none; }
+    /* The cat sits at the top edge of the panel, as on a windowsill, and its bubble rises over the camera. */
+    #cat { position: fixed; right: calc(var(--panel-pad) + env(safe-area-inset-right)); bottom: calc(var(--panel-h) - var(--cat-size) + 10px); width: var(--cat-size); height: var(--cat-size); display: grid; place-items: center; font-size: calc(var(--cat-size) * .6); line-height: 1; transform-origin: 50% 100%; pointer-events: none; animation: breathe 3s ease-in-out infinite; }
     #cat img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .35)); -webkit-user-drag: none; }
     /* The closed-eyes picture lies exactly over the open one and shows for a moment. */
     #cat > *, #intro-cat > * { grid-area: 1 / 1; }
     .blink { opacity: 0; }
     .is-blink .blink { opacity: 1; }
-    #bubble { position: fixed; right: calc(16px + env(safe-area-inset-right)); bottom: calc(24px + var(--cat-size) + env(safe-area-inset-bottom)); max-width: min(70vw, 320px); padding: 10px 14px; border-radius: 16px; background: rgba(255, 255, 255, .95); color: #1c1c1e; font-size: 16px; font-weight: 500; line-height: 1.35; box-shadow: 0 6px 20px rgba(0, 0, 0, .25); pointer-events: none; transform-origin: calc(100% - 36px) 100%; }
+    #bubble { position: fixed; right: calc(var(--panel-pad) + env(safe-area-inset-right)); bottom: calc(var(--panel-h) + 18px); max-width: min(70vw, 320px); padding: 10px 14px; border-radius: 16px; background: rgba(255, 255, 255, .95); color: #1c1c1e; font-size: 16px; font-weight: 500; line-height: 1.35; box-shadow: 0 6px 20px rgba(0, 0, 0, .25); pointer-events: none; transform-origin: calc(100% - 36px) 100%; }
     #bubble::after { content: ''; position: absolute; right: 30px; bottom: -6px; width: 12px; height: 12px; background: inherit; border-radius: 0 0 3px 0; transform: rotate(45deg); }
     #bubble:empty { display: none; }
     #bubble.is-pop { animation: pop .18s ease-out; }
@@ -42,24 +72,54 @@
     .dots i:nth-child(2) { animation-delay: .15s; }
     .dots i:nth-child(3) { animation-delay: .3s; }
     @keyframes dot { 0%, 60%, 100% { transform: translateY(0); opacity: .4; } 30% { transform: translateY(-4px); opacity: 1; } }
-    body.is-intro #cat, body.is-intro #bubble, body.is-intro #overlay { display: none; }
+    body.is-intro #cat, body.is-intro #bubble, body.is-intro #overlay, body.is-intro #panel { display: none; }
+    #info { box-sizing: border-box; width: min(92vw, 420px); max-height: 80vh; max-height: 80dvh; padding: 0; border: 0; border-radius: 20px; background: #fff; color: var(--ink); overflow: auto; overscroll-behavior: contain; -webkit-user-select: text; user-select: text; }
+    #info::backdrop { background: rgba(0, 0, 0, .55); }
+    .info-body { padding: 20px 22px 22px; }
+    .info-body h2 { margin: 0 0 12px; font-size: 22px; }
+    .info-body p { margin: 0 0 10px; font-size: 15px; line-height: 1.45; }
+    .info-body b { font-weight: 700; }
+    .info-body form { margin: 16px 0 0; }
+    .info-body form button { width: 100%; min-height: 48px; border: 0; border-radius: 999px; background: var(--orange); color: var(--ink); font: inherit; font-size: 17px; font-weight: 700; }
     #intro { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom)); background: radial-gradient(circle at 50% 45%, #2a1d14 0%, #111 70%); text-align: center; }
     #intro h1 { margin: 0; font-size: clamp(28px, 8vw, 40px); font-weight: 800; letter-spacing: -.02em; color: #fff; }
-    #intro h1 span { color: #f5a623; }
+    #intro h1 span { color: var(--orange); }
     #intro-bubble { position: relative; max-width: min(80vw, 320px); padding: 12px 16px; border-radius: 16px; background: rgba(255, 255, 255, .95); color: #1c1c1e; font-weight: 500; line-height: 1.35; box-shadow: 0 6px 20px rgba(0, 0, 0, .25); animation: pop .3s ease-out .2s backwards; }
     #intro-bubble::after { content: ''; position: absolute; left: 50%; bottom: -6px; width: 12px; height: 12px; margin-left: -6px; background: inherit; border-radius: 0 0 3px 0; transform: rotate(45deg); }
     #intro-cat { display: grid; width: min(60vw, 260px); margin-top: -8px; transform-origin: 50% 100%; filter: drop-shadow(0 10px 20px rgba(0, 0, 0, .45)); animation: breathe 3s ease-in-out infinite; }
     #intro-cat img { width: 100%; height: auto; -webkit-user-drag: none; }
-    #start { font: inherit; font-size: 18px; font-weight: 700; padding: 15px 32px; border: 0; border-radius: 999px; background: #f5a623; color: #1c1c1e; box-shadow: 0 8px 24px rgba(245, 166, 35, .35); transition: transform .1s, opacity .2s; }
+    #start { font: inherit; font-size: 18px; font-weight: 700; padding: 15px 32px; border: 0; border-radius: 999px; background: var(--orange); color: var(--ink); box-shadow: 0 8px 24px rgba(250, 154, 60, .35); transition: transform .1s, opacity .2s; }
     #start:active { transform: scale(.96); }
     #start:disabled { opacity: .6; }
     #intro p { margin: 0; max-width: 300px; font-size: 14px; color: #a1a1a6; }
     #debug-crop { position: fixed; left: calc(8px + env(safe-area-inset-left)); top: calc(8px + env(safe-area-inset-top)); width: 120px; border: 2px solid #f5a623; pointer-events: none; }
   </style>
 </head>
-<body class="is-intro">
+<body class="is-intro is-cat">
+  <svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false">
+    <filter id="cat-vision" color-interpolation-filters="sRGB">
+      <feColorMatrix id="cat-matrix" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0"/>
+    </filter>
+  </svg>
   <video id="video" playsinline muted autoplay></video>
   <canvas id="overlay"></canvas>
+  <div id="panel">
+    <div class="panel-buttons">
+      <button id="info-button" type="button" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6M12 7.5v.01"/></svg>
+        Как это
+      </button>
+      <button id="vision-button" type="button" aria-pressed="true" aria-label="Кошачье зрение">
+        <svg class="icon-cat" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><path d="M12 8.5c-1 1-1 6 0 7 1-1 1-6 0-7z"/></svg>
+        <svg class="icon-human" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span id="vision-label">Кошка</span>
+      </button>
+      <button id="save-button" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 17v3h16v-3"/></svg>
+        Сохранить
+      </button>
+    </div>
+  </div>
   <div id="cat" aria-hidden="true"><img id="cat-img" src="/assets/cat/curious.webp" alt="" draggable="false"><img class="blink" src="/assets/cat/blink.webp" alt="" draggable="false"></div>
   <div id="bubble" aria-live="polite"></div>
   <section id="intro">
@@ -69,6 +129,17 @@
     <button id="start">Включить камеру</button>
     <p>Тапни по предмету или человеку, и кот скажет, что думает.</p>
   </section>
+  <dialog id="info" aria-labelledby="info-title">
+    <div class="info-body">
+      <h2 id="info-title">Как это работает</h2>
+      <p>Наведи камеру и тапни по предмету или человеку. Кот посмотрит и скажет, что думает.</p>
+      <p><b>Лицо не покидает телефон.</b> Эмоцию кот узнаёт прямо на телефоне, наружу уходит только её название, например «радость».</p>
+      <p><b>Предмет</b> кот узнаёт по маленькой вырезке кадра вокруг тапа. Её смотрит нейросеть Gemini, а все лица на вырезке закрашены.</p>
+      <p><b>Кошачье зрение.</b> Кошки почти не отличают красный от зелёного, как люди-дихроматы, и видят чуть размыто. Кнопка «Кошка / Человек» включает и выключает этот фильтр.</p>
+      <p><b>«Сохранить»</b> делает фото с котом и его репликой. Фото остаётся на твоём телефоне и никуда не отправляется. Лица на нём не закрыты.</p>
+      <form method="dialog"><button>Понятно</button></form>
+    </div>
+  </dialog>
   <img id="debug-crop" alt="" hidden>
   <!-- main.js goes first: scripts in this list run in order, so a hanging CDN placed
        before it would leave the start button dead. detect.js waits for the load event. -->

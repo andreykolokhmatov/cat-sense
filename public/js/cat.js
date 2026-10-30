@@ -152,3 +152,9 @@ export function unlockAudio() {
 
 // There are no sound files yet, so the cat stays silent.
 export function playMeow() {}
+
+// What the cat shows right now, for the saved photo. The thinking dots have no text, so a
+// photo taken mid-thought gets no bubble.
+export function currentLine() {
+  return { text: bubbleEl.textContent.trim(), img: catImg.hidden ? null : catImg };
+}

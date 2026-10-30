@@ -1,10 +1,12 @@
 import { startCamera } from './camera.js';
-import { lookAt, playMeow, say, think, unlockAudio } from './cat.js';
+import { currentLine, lookAt, playMeow, say, think, unlockAudio } from './cat.js';
 import { getDetections, startDetection } from './detect.js';
 import { askCat } from './logic/askCat.js';
+import { CAT_BLUR_PX, CAT_MATRIX, toFeColorMatrixValues } from './logic/catVision.js';
 import { screenToVideo, videoFrame } from './logic/coverMap.js';
 import { tapBox } from './logic/cropRegion.js';
 import { pickTarget } from './logic/pickTarget.js';
+import { saveFrame } from './saveFrame.js';
 import { snapshot } from './snapshot.js';
 
 // A fallback phrase comes back instantly; without a pause the dots would only flicker.
@@ -19,7 +21,11 @@ const intro = document.getElementById('intro');
 const introBubble = document.getElementById('intro-bubble');
 const introImg = document.getElementById('intro-img');
 const debugCrop = document.getElementById('debug-crop');
-const debug = new URLSearchParams(window.location.search).has('debug');
+const visionButton = document.getElementById('vision-button');
+const visionLabel = document.getElementById('vision-label');
+const infoDialog = document.getElementById('info');
+const params = new URLSearchParams(window.location.search);
+const debug = params.has('debug');
 
 let phrases = MINIMAL_PHRASES;
 let lastText = null;
@@ -65,6 +71,36 @@ async function handleTap(event) {
   busy = false;
 }
 
+function setCatMode(on) {
+  document.body.classList.toggle('is-cat', on);
+  visionButton.setAttribute('aria-pressed', String(on));
+  visionLabel.textContent = on ? 'Кошка' : 'Человек';
+}
+
+// No await before saveFrame: Safari opens the share sheet only inside the tap itself.
+function handleSave() {
+  if (!video.videoWidth) return;
+  const { width, height } = video.getBoundingClientRect();
+  const { text, img } = currentLine();
+  saveFrame({ video, view: { width, height }, catMode: document.body.classList.contains('is-cat'), catImg: img, text });
+}
+
+// A click on the dialog element itself is a click on the backdrop: the content has its own box.
+function closeOnBackdrop(event) {
+  if (event.target === infoDialog) infoDialog.close();
+}
+
+function setUpPanel() {
+  document.getElementById('cat-matrix').setAttribute('values', toFeColorMatrixValues(CAT_MATRIX));
+  document.documentElement.style.setProperty('--cat-blur', `${CAT_BLUR_PX}px`);
+  // ?catcss switches to the plain CSS filter, for phones where the SVG filter misbehaves.
+  document.body.classList.toggle('is-cat-css', params.has('catcss'));
+  visionButton.addEventListener('click', () => setCatMode(!document.body.classList.contains('is-cat')));
+  document.getElementById('save-button').addEventListener('click', handleSave);
+  document.getElementById('info-button').addEventListener('click', () => infoDialog.showModal());
+  infoDialog.addEventListener('click', closeOnBackdrop);
+}
+
 async function handleStart() {
   unlockAudio();
   startButton.disabled = true;
@@ -83,4 +119,5 @@ async function handleStart() {
 }
 
 loadPhrases();
+setUpPanel();
 startButton.addEventListener('click', handleStart);

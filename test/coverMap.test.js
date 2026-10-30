@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { coverTransform, screenToVideo, videoFrame, videoToScreen } from '../public/js/logic/coverMap.js';
+import { coverTransform, screenToVideo, videoFrame, videoToScreen, visibleSource } from '../public/js/logic/coverMap.js';
 import { pickTarget } from '../public/js/logic/pickTarget.js';
 
 const portrait = { width: 390, height: 844 };
@@ -71,4 +71,27 @@ test('tap on the screen hits a box given in video coordinates', () => {
   const [x, y, width, height] = videoToScreen(cup.bbox, portrait, video);
   const tap = screenToVideo({ x: x + width / 2, y: y + height / 2 }, portrait, video);
   assert.equal(pickTarget(tap, [cup, chair]), cup);
+});
+
+test('visibleSource is the centered part of the frame that stays on screen', () => {
+  const view = { width: 390, height: 590 };
+  const frame = { width: 720, height: 1280 };
+  const { sx, sy, sw, sh } = visibleSource(view, frame);
+  assertClose(sw / sh, 390 / 590, 1e-9);
+  // The camera area is wider than the portrait frame, so the top and bottom are cut.
+  assertClose(sw, 720, 1e-9);
+  assertClose(sx, 0);
+  assertClose(sy + sh / 2, 640, 1e-9);
+  assert.ok(sy > 0 && sy + sh <= 1280);
+  const corner = screenToVideo({ x: 0, y: 0 }, view, frame);
+  assertClose(corner.x, sx, 1e-9);
+  assertClose(corner.y, sy, 1e-9);
+});
+
+test('visibleSource with matching proportions is the whole frame', () => {
+  assert.deepEqual(visibleSource({ width: 960, height: 540 }, video), { sx: 0, sy: 0, sw: 1920, sh: 1080 });
+});
+
+test('visibleSource without a frame is null', () => {
+  assert.equal(visibleSource(portrait, { width: 0, height: 0 }), null);
 });
