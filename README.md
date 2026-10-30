@@ -19,7 +19,8 @@
 | Часть | Технология | Где работает |
 |---|---|---|
 | Камера и фильтр | `getUserMedia`, CSS `filter`, Canvas | телефон |
-| Предметы | TensorFlow.js + COCO-SSD | телефон |
+| Предметы | Gemini по вырезке вокруг тапа | Vercel |
+| Люди (для приватности) | TensorFlow.js + COCO-SSD | телефон |
 | Лица и эмоции | MediaPipe Face Landmarker, blendshapes | телефон |
 | Реплики кота | Gemini через `/api/ask` | Vercel |
 | Запасные реплики | `phrases.json` | телефон |

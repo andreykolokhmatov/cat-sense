@@ -1,5 +1,5 @@
 import { videoFrame } from './logic/coverMap.js';
-import { faceDetections, objectDetections } from './logic/detections.js';
+import { bodyDetections, faceDetections } from './logic/detections.js';
 
 const VISION_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35';
 const FACE_MODEL_URL =
@@ -12,7 +12,7 @@ const HAVE_CURRENT_DATA = 2;
 let video = null;
 let cocoModel = null;
 let faceLandmarker = null;
-let objects = [];
+let bodies = [];
 let faces = [];
 let detectionsFrame = null;
 let lastTimestamp = 0;
@@ -62,12 +62,12 @@ function findFaces(source, frame) {
   return faceDetections(faceLandmarker.detectForVideo(source, nextTimestamp()), frame);
 }
 
-async function updateObjects() {
+async function updateBodies() {
   if (!cocoModel) return;
   try {
-    objects = objectDetections(await cocoModel.detect(video));
+    bodies = bodyDetections(await cocoModel.detect(video));
   } catch (error) {
-    objects = [];
+    bodies = [];
     console.warn('COCO-SSD failed on a frame', error);
   }
 }
@@ -82,22 +82,21 @@ function updateFaces(frame) {
   }
 }
 
-async function tick(onUpdate) {
+async function tick() {
   const frame = videoFrame(video);
-  await updateObjects();
+  await updateBodies();
   updateFaces(frame);
   detectionsFrame = frame;
-  onUpdate();
 }
 
 function pause(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function runLoop(onUpdate) {
+async function runLoop() {
   for (;;) {
     const startedAt = performance.now();
-    if (!document.hidden && video.readyState >= HAVE_CURRENT_DATA) await tick(onUpdate);
+    if (!document.hidden && video.readyState >= HAVE_CURRENT_DATA) await tick();
     await pause(Math.max(0, LOOP_MS - (performance.now() - startedAt)));
   }
 }
@@ -106,16 +105,16 @@ function isCurrentFrame() {
   return detectionsFrame?.width === video.videoWidth && detectionsFrame?.height === video.videoHeight;
 }
 
-export function startDetection(videoElement, onUpdate) {
+export function startDetection(videoElement) {
   video = videoElement;
   loadCoco();
   loadFaceLandmarker();
-  runLoop(onUpdate);
+  runLoop();
 }
 
 // After a rotation the boxes are in the old frame: they would miss the objects and the masks.
 export function getDetections() {
-  return isCurrentFrame() ? [...objects, ...faces] : [];
+  return isCurrentFrame() ? [...bodies, ...faces] : [];
 }
 
 // Returns null while the model is unavailable, so the caller can refuse to build an image.

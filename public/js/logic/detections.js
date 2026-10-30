@@ -27,8 +27,12 @@ function headOf([x, y, width, height]) {
   return [x, y, width, height * HEAD_SHARE];
 }
 
-export function objectDetections(cocoResults) {
-  return cocoResults.map(({ bbox, class: label }) => ({ kind: 'object', label, bbox }));
+// COCO-SSD mislabels things, so Gemini names every object. COCO stays only to find bodies:
+// they mask heads Face Landmarker missed and keep a tap on a body from sending its image.
+export function bodyDetections(cocoResults) {
+  return cocoResults
+    .filter(({ class: label }) => label === 'person')
+    .map(({ bbox }) => ({ kind: 'object', label: 'person', bbox }));
 }
 
 // Landmarks are normalized and can fall outside 0..1 when a face is cut by the frame edge.

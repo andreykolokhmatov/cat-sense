@@ -80,7 +80,7 @@ test('parseAsk rejects a missing, oversized or non-base64 image', () => {
 
 test('userPrompt names the object, the unknown case and the emotion in Russian', () => {
   assert.match(userPrompt(cupAsk), /кружка/);
-  assert.match(userPrompt({ ...cupAsk, label: 'unknown' }), /не понял/);
+  assert.match(userPrompt({ ...cupAsk, label: 'unknown' }), /в центре картинки/);
   assert.match(userPrompt({ kind: 'person', emotion: 'angry' }), /злость/);
 });
 

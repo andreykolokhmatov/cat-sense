@@ -5,7 +5,7 @@
 ```
 Телефон (браузер)                              Vercel (serverless-функция)
   камера + кошачий фильтр
-  COCO-SSD: предметы и люди
+  COCO-SSD: только люди (приватность)
   Face Landmarker: эмоции
   тап по объекту
     |-- кот "думает" (заглушка)
@@ -51,7 +51,7 @@ Vercel сам отдаёт `public/` как сайт и превращает ф�
 { "text": "Хочу воды!", "mood": "want" }
 ```
 
-Значения `mood`: `want`, `curious`, `scared`, `happy`. Значения `emotion`: `happy`, `surprised`, `angry`, `neutral`. `label` это имя класса COCO-SSD (`cup`, `cell phone`).
+Значения `mood`: `want`, `curious`, `scared`, `happy`. Значения `emotion`: `happy`, `surprised`, `angry`, `neutral`. Фронт всегда шлёт `label: "unknown"`: предмет по вырезке определяет Gemini. API ещё принимает имена классов COCO-SSD (`cup`, `cell phone`).
 
 Реплику пишет модель, фронт её только показывает. Ошибка или таймаут: фронт вызывает `pickPhrase` из `public/js/logic/pickPhrase.js`, берёт фразу из `phrases.json` в том же формате `{ text, mood }`, и пользователь видит работающего кота.
 

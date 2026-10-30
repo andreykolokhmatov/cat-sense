@@ -27,7 +27,8 @@ export function cropRegion([x, y, width, height], frame, options = {}) {
   };
 }
 
-// Gemini recognizes things COCO-SSD does not, so a tap on nothing still gets a crop around it.
-export function tapBox(tap, side = 240) {
+// Every object is framed by the tap alone, so the box is wide enough to hold a whole book
+// or a mug at arm's length in a 1280x720 frame.
+export function tapBox(tap, side = 320) {
   return [tap.x - side / 2, tap.y - side / 2, side, side];
 }

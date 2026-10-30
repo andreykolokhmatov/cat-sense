@@ -5,7 +5,6 @@ import { askCat } from './logic/askCat.js';
 import { screenToVideo, videoFrame } from './logic/coverMap.js';
 import { tapBox } from './logic/cropRegion.js';
 import { pickTarget } from './logic/pickTarget.js';
-import { startOverlay } from './overlay.js';
 import { snapshot } from './snapshot.js';
 
 // A fallback phrase comes back instantly; without a pause the dots would only flicker.
@@ -13,6 +12,7 @@ const MIN_THINK_MS = 700;
 const MINIMAL_PHRASES = { objects: {}, emotions: {}, fallback: { mood: 'curious', lines: ['Мяу?'] } };
 
 const video = document.getElementById('video');
+// The empty canvas over the video is only the tap surface; nothing is drawn on it.
 const overlay = document.getElementById('overlay');
 const startButton = document.getElementById('start');
 const intro = document.getElementById('intro');
@@ -78,7 +78,7 @@ async function handleStart() {
   intro.hidden = true;
   document.body.classList.remove('is-intro');
   say('Мяу! Тапни по чему-нибудь.', 'happy');
-  startDetection(video, startOverlay(overlay, video, getDetections));
+  startDetection(video);
   overlay.addEventListener('click', handleTap);
 }
 

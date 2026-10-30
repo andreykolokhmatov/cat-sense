@@ -87,8 +87,3 @@ export const EMOTION_LABELS = {
   angry: 'злость',
   neutral: 'спокойствие',
 };
-
-export function captionOf(detection) {
-  if (detection.kind === 'person') return EMOTION_LABELS[detection.emotion] ?? detection.emotion;
-  return OBJECT_LABELS[detection.label] ?? detection.label;
-}

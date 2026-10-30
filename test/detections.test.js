@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { faceBox, faceDetections, objectDetections, privacyMasks } from '../public/js/logic/detections.js';
+import { bodyDetections, faceBox, faceDetections, privacyMasks } from '../public/js/logic/detections.js';
 
 const frame = { width: 1000, height: 500 };
 const smile = [
@@ -19,9 +19,12 @@ function assertBox(actual, expected) {
   });
 }
 
-test('objectDetections renames the COCO class to label', () => {
-  const results = [{ bbox: [1, 2, 3, 4], class: 'cup', score: 0.8 }];
-  assert.deepEqual(objectDetections(results), [{ kind: 'object', label: 'cup', bbox: [1, 2, 3, 4] }]);
+test('bodyDetections keeps only people from COCO results', () => {
+  const results = [
+    { bbox: [1, 2, 3, 4], class: 'cup', score: 0.8 },
+    { bbox: [5, 6, 7, 8], class: 'person', score: 0.9 },
+  ];
+  assert.deepEqual(bodyDetections(results), [{ kind: 'object', label: 'person', bbox: [5, 6, 7, 8] }]);
 });
 
 test('faceBox wraps the landmarks in frame pixels', () => {
