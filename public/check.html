@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Кошачье чутьё</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #111; color: #eee; font: 16px/1.4 system-ui, sans-serif; }
+    video { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    #panel { position: fixed; left: 0; right: 0; bottom: 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); background: rgba(0, 0, 0, .65); }
+    button { font: inherit; padding: 12px 20px; border: 0; border-radius: 10px; background: #f5a623; color: #111; }
+    pre { margin: 12px 0 0; white-space: pre-wrap; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <video id="video" playsinline muted autoplay></video>
+  <div id="panel">
+    <button id="start">Включить камеру</button>
+    <pre id="log"></pre>
+  </div>
+  <script type="module">
+    const video = document.getElementById('video');
+    const logEl = document.getElementById('log');
+    const log = (line) => { logEl.textContent += line + '\n'; };
+
+    log(`HTTPS: ${window.isSecureContext ? 'да' : 'НЕТ, камера не заработает'}`);
+
+    fetch('/api/ping')
+      .then((r) => r.json())
+      .then((d) => {
+        log(`Функции: ok, регион ${d.region}, ключ Gemini ${d.hasGeminiKey ? 'задан' : 'не задан'}`);
+        log(d.gemini.ok ? `Gemini: ok\n${d.gemini.flashModels.join('\n')}` : `Gemini: ошибка ${d.gemini.error}`);
+      })
+      .catch((e) => log(`Функции: ошибка ${e.message}`));
+
+    document.getElementById('start').addEventListener('click', async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false,
+        });
+        video.srcObject = stream;
+        await video.play();
+        const { width, height } = stream.getVideoTracks()[0].getSettings();
+        log(`Камера: ok, ${width}x${height}`);
+      } catch (e) {
+        log(`Камера: ошибка ${e.name}`);
+      }
+    });
+  </script>
+</body>
+</html>

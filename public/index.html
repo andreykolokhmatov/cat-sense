@@ -5,48 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Кошачье чутьё</title>
   <style>
-    html, body { margin: 0; height: 100%; background: #111; color: #eee; font: 16px/1.4 system-ui, sans-serif; }
-    video { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-    #panel { position: fixed; left: 0; right: 0; bottom: 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); background: rgba(0, 0, 0, .65); }
-    button { font: inherit; padding: 12px 20px; border: 0; border-radius: 10px; background: #f5a623; color: #111; }
-    pre { margin: 12px 0 0; white-space: pre-wrap; font-size: 14px; }
+    html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; background: #111; color: #eee; font: 16px/1.4 system-ui, sans-serif; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+    [hidden] { display: none !important; }
+    video, #overlay { position: fixed; inset: 0; width: 100%; height: 100%; height: 100dvh; }
+    video { object-fit: cover; filter: saturate(.5) brightness(1.1) contrast(.95) blur(.6px); }
+    #overlay { touch-action: manipulation; }
+    #cat { position: fixed; right: calc(16px + env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom)); font-size: 72px; line-height: 1; pointer-events: none; }
+    #bubble { position: fixed; right: calc(16px + env(safe-area-inset-right)); bottom: calc(100px + env(safe-area-inset-bottom)); max-width: min(70vw, 320px); padding: 10px 14px; border-radius: 14px; background: rgba(255, 255, 255, .92); color: #111; pointer-events: none; }
+    #bubble:empty { display: none; }
+    #start { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); font: inherit; padding: 12px 20px; border: 0; border-radius: 10px; background: #f5a623; color: #111; }
+    #debug-crop { position: fixed; left: calc(8px + env(safe-area-inset-left)); top: calc(8px + env(safe-area-inset-top)); width: 120px; border: 2px solid #f5a623; pointer-events: none; }
   </style>
 </head>
 <body>
   <video id="video" playsinline muted autoplay></video>
-  <div id="panel">
-    <button id="start">Включить камеру</button>
-    <pre id="log"></pre>
-  </div>
-  <script type="module">
-    const video = document.getElementById('video');
-    const logEl = document.getElementById('log');
-    const log = (line) => { logEl.textContent += line + '\n'; };
-
-    log(`HTTPS: ${window.isSecureContext ? 'да' : 'НЕТ, камера не заработает'}`);
-
-    fetch('/api/ping')
-      .then((r) => r.json())
-      .then((d) => {
-        log(`Функции: ok, регион ${d.region}, ключ Gemini ${d.hasGeminiKey ? 'задан' : 'не задан'}`);
-        log(d.gemini.ok ? `Gemini: ok\n${d.gemini.flashModels.join('\n')}` : `Gemini: ошибка ${d.gemini.error}`);
-      })
-      .catch((e) => log(`Функции: ошибка ${e.message}`));
-
-    document.getElementById('start').addEventListener('click', async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' } },
-          audio: false,
-        });
-        video.srcObject = stream;
-        await video.play();
-        const { width, height } = stream.getVideoTracks()[0].getSettings();
-        log(`Камера: ok, ${width}x${height}`);
-      } catch (e) {
-        log(`Камера: ошибка ${e.name}`);
-      }
-    });
-  </script>
+  <canvas id="overlay"></canvas>
+  <div id="cat" aria-hidden="true"></div>
+  <div id="bubble" aria-live="polite"></div>
+  <button id="start">Включить камеру</button>
+  <img id="debug-crop" alt="" hidden>
+  <!-- main.js goes first: scripts in this list run in order, so a hanging CDN placed
+       before it would leave the start button dead. detect.js waits for the load event. -->
+  <script type="module" src="/js/main.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
 </body>
 </html>
