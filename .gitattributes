@@ -1,0 +1,9 @@
+# Linux and Windows share this repo: keep LF everywhere so diffs stay clean
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.mp3 binary
+*.ogg binary
+*.wav binary
+*.task binary
+*.bin binary
