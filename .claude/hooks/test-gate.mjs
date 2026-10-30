@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Stop hook: soft "test after feature" gate. Node port of the harness test-gate.sh,
-// so it needs no jq on Windows. Only logic paths are gated: camera and visuals stay free.
+// so it needs no jq on Windows. Only logic paths (api/, public/js/logic/) are gated:
+// camera and visuals stay free.
 // Fail-open on any error. Loop-safe: caps at 2 blocks per git HEAD, then gives up.
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -8,7 +9,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const GATED = /^(server|public[\\/]js[\\/]logic)[\\/].+\.(js|mjs|ts)$/i;
+const GATED = /^(api|public[\\/]js[\\/]logic)[\\/].+\.(js|mjs|ts)$/i;
 const TEST_RUN = /npm (run )?test|node --test|vitest/i;
 const MAX_BLOCKS = 2;
 

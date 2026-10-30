@@ -1,0 +1,8 @@
+{
+  "name": "cat-sense",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  }
+}

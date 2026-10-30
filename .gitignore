@@ -6,6 +6,9 @@
 # Dependencies
 node_modules/
 
+# Vercel CLI link to the project
+.vercel
+
 # Per-session hook state and personal Claude settings
 .claude/sessions/
 .claude/settings.local.json
