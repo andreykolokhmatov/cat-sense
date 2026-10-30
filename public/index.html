@@ -27,7 +27,10 @@
 
     fetch('/api/ping')
       .then((r) => r.json())
-      .then((d) => log(`Функции: ok, регион ${d.region}, ключ Gemini ${d.hasGeminiKey ? 'задан' : 'не задан'}`))
+      .then((d) => {
+        log(`Функции: ok, регион ${d.region}, ключ Gemini ${d.hasGeminiKey ? 'задан' : 'не задан'}`);
+        log(d.gemini.ok ? `Gemini: ok\n${d.gemini.flashModels.join('\n')}` : `Gemini: ошибка ${d.gemini.error}`);
+      })
       .catch((e) => log(`Функции: ошибка ${e.message}`));
 
     document.getElementById('start').addEventListener('click', async () => {
