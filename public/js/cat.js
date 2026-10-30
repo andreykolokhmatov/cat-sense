@@ -4,6 +4,8 @@ const POSES = {
   scared: { src: '/assets/cat/scared.webp', emoji: '🙀' },
   happy: { src: '/assets/cat/happy.webp', emoji: '😸' },
   think: { src: '/assets/cat/thinking.webp', emoji: '😼' },
+  // No offended picture yet: the pensive pose, mirrored by CSS, reads as turning away.
+  grudge: { src: '/assets/cat/thinking.webp', emoji: '😾' },
 };
 const MAX_LEAN_DEG = 10;
 const LEAN_MS = 3500;

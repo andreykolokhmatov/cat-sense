@@ -86,7 +86,8 @@ async function respond(target, point) {
   if (debug && image) showDebugCrop(image);
 
   const [{ text, mood }] = await Promise.all([askCat({ target, image, phrases, lastText }), pause(MIN_THINK_MS)]);
-  say(text, mood);
+  // The model picks a mood by the words; an offended cat must look offended whatever it said.
+  say(text, target.grudge ? 'grudge' : mood);
   playMeow();
   lastText = text;
   busy = false;

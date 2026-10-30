@@ -21,9 +21,13 @@
       --ink: #1c1c1e;
       --screen-h: 100vh;
       --panel-pad: 12px;
+      --panel-gap: 10px;
+      --panel-radius: 22px;
+      --buttons-h: 46px;
       --panel-h: calc(var(--screen-h) * .3 + env(safe-area-inset-bottom));
       --camera-h: calc(var(--screen-h) - var(--panel-h));
-      --cat-size: min(34vw, 160px, calc(var(--panel-h) - env(safe-area-inset-bottom) - 2 * var(--panel-pad)));
+      /* The cat fills the whole row above the buttons, so the line clearly comes from it. */
+      --cat-size: min(46vw, 200px, calc(var(--panel-h) + var(--panel-radius) - env(safe-area-inset-bottom) - 2 * var(--panel-pad) - var(--buttons-h) - var(--panel-gap)));
     }
     @supports (height: 100dvh) { :root { --screen-h: 100dvh; } }
     /* The overlay must cover exactly the video box: taps are mapped through the video's rect. */
@@ -41,15 +45,17 @@
        the magnifier or a text selection. */
     #overlay { touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
     /* Everything the cat says lives inside the panel: nothing may cover the camera. */
-    #panel { position: fixed; left: 0; right: 0; bottom: 0; height: var(--panel-h); box-sizing: border-box; display: grid; grid-template: 'bubble cat' minmax(0, 1fr) 'buttons cat' auto / minmax(0, 1fr) var(--cat-size); gap: 8px; padding: var(--panel-pad) calc(var(--panel-pad) + env(safe-area-inset-right)) calc(var(--panel-pad) + env(safe-area-inset-bottom)) calc(var(--panel-pad) + env(safe-area-inset-left)); background: var(--orange); }
-    .panel-buttons { grid-area: buttons; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-    .panel-buttons button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; min-height: 44px; padding: 5px 2px; border: 0; border-radius: 14px; background: rgba(255, 255, 255, .3); color: var(--ink); font: inherit; font-size: 12px; font-weight: 650; line-height: 1.1; white-space: nowrap; transition: transform .1s, background-color .2s; }
-    .panel-buttons button:active { transform: scale(.96); }
+    /* The panel rises over the camera by its corner radius: a sheet the cat sits on. That strip
+       is the panel's, taps on it do not reach the camera, and the video mapping is unchanged. */
+    #panel { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--panel-h) + var(--panel-radius)); box-sizing: border-box; display: grid; grid-template: 'bubble cat' minmax(0, 1fr) 'buttons buttons' var(--buttons-h) / minmax(0, 1fr) var(--cat-size); column-gap: 4px; row-gap: var(--panel-gap); padding: var(--panel-pad) calc(var(--panel-pad) + env(safe-area-inset-right)) calc(var(--panel-pad) + env(safe-area-inset-bottom)) calc(var(--panel-pad) + env(safe-area-inset-left)); border-radius: var(--panel-radius) var(--panel-radius) 0 0; background: var(--orange); box-shadow: 0 -8px 24px rgba(0, 0, 0, .22); }
+    .panel-buttons { grid-area: buttons; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .panel-buttons button { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; padding: 0 6px; border: 0; border-radius: 14px; background: rgba(255, 255, 255, .32); color: var(--ink); font: inherit; font-size: clamp(12px, 3.6vw, 14px); font-weight: 700; line-height: 1; white-space: nowrap; transition: transform .1s, background-color .2s; }
+    .panel-buttons button:active { transform: scale(.96); background: rgba(255, 255, 255, .5); }
     .panel-buttons button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
-    .panel-buttons svg { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    #save-button { background: rgba(255, 255, 255, .92); }
+    .panel-buttons svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+    #save-button { background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .12); }
     #vision-button[aria-pressed="false"] .icon-cat, #vision-button[aria-pressed="true"] .icon-human { display: none; }
-    #cat { grid-area: cat; align-self: end; width: var(--cat-size); height: var(--cat-size); display: grid; place-items: center; font-size: calc(var(--cat-size) * .6); line-height: 1; transform-origin: 50% 100%; pointer-events: none; animation: breathe 3s ease-in-out infinite; }
+    #cat { grid-area: cat; align-self: end; position: relative; width: var(--cat-size); height: var(--cat-size); display: grid; place-items: center; font-size: calc(var(--cat-size) * .6); line-height: 1; transform-origin: 50% 100%; pointer-events: none; animation: breathe 3s ease-in-out infinite; }
     #cat img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .35)); -webkit-user-drag: none; }
     /* The closed-eyes picture lies exactly over the open one and shows for a moment. */
     #cat > *, #intro-cat > * { grid-area: 1 / 1; }
@@ -57,8 +63,9 @@
     .is-blink .blink { opacity: 1; }
     /* The bubble grows with its text up to the row height; past that cat.js shrinks the font and
        the rest is cut inside .bubble-text, so the buttons never move. */
-    #bubble { grid-area: bubble; position: relative; align-self: start; justify-self: stretch; box-sizing: border-box; display: flex; flex-direction: column; min-height: 0; max-height: 100%; padding: 8px 12px; border-radius: 16px; background: rgba(255, 255, 255, .95); color: #1c1c1e; font-size: 16px; font-weight: 500; line-height: 1.3; box-shadow: 0 4px 12px rgba(0, 0, 0, .18); pointer-events: none; transform-origin: 100% 20px; }
-    #bubble::after { content: ''; position: absolute; right: -5px; top: 16px; width: 12px; height: 12px; background: inherit; border-radius: 0 3px 0 0; transform: rotate(45deg); }
+    /* Centred on the cat's head, the tail pointing at its mouth. */
+    #bubble { grid-area: bubble; position: relative; align-self: center; justify-self: end; box-sizing: border-box; display: flex; flex-direction: column; min-height: 0; max-height: 100%; padding: 10px 14px; border-radius: 18px; background: #fff; color: var(--ink); font-size: 16px; font-weight: 500; line-height: 1.3; box-shadow: 0 6px 16px rgba(0, 0, 0, .16); pointer-events: none; transform-origin: 100% 50%; }
+    #bubble::after { content: ''; position: absolute; right: -6px; top: calc(50% - 7px); width: 14px; height: 14px; background: inherit; border-radius: 0 3px 0 0; transform: rotate(45deg); }
     .bubble-text { display: -webkit-box; -webkit-box-orient: vertical; min-height: 0; overflow: hidden; overflow-wrap: anywhere; }
     #bubble:has(> .bubble-text:empty) { visibility: hidden; }
     #bubble.is-pop { animation: pop .18s ease-out; }
@@ -68,6 +75,12 @@
     #cat.is-scared { animation: shake .5s linear, breathe 3s ease-in-out .5s infinite; }
     #cat.is-happy { animation: wiggle .6s ease-in-out 2, breathe 3s ease-in-out 1.2s infinite; }
     #cat.is-curious { animation: tilt .8s ease-in-out, breathe 3s ease-in-out .8s infinite; }
+    /* Offended: the cat turns its head away from the person and an anger mark throbs above it. */
+    #cat.is-grudge { animation: huff .5s ease-out, breathe 3s ease-in-out .5s infinite; }
+    #cat.is-grudge img { transform: scaleX(-1); }
+    #cat.is-grudge::before { content: '💢'; position: absolute; z-index: 1; top: 0; left: 6%; font-size: calc(var(--cat-size) * .22); line-height: 1; animation: throb .9s ease-in-out infinite; }
+    @keyframes huff { 0%, 100% { transform: scale(1); } 35% { transform: scale(1.06, .94); } }
+    @keyframes throb { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
     @keyframes breathe { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.03); } }
     @keyframes think { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
     @keyframes hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-12px); } }
@@ -75,7 +88,7 @@
     @keyframes wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-6deg); } 75% { transform: rotate(6deg); } }
     @keyframes tilt { 0%, 100% { transform: rotate(0); } 40% { transform: rotate(-6deg); } }
     @keyframes pop { from { opacity: 0; transform: translateY(6px) scale(.96); } to { opacity: 1; transform: none; } }
-    @media (prefers-reduced-motion: reduce) { #cat, #cat[class], #bubble.is-pop, .dots i, #intro-bubble, #intro-cat { animation: none; } #cat img { transition: none; } }
+    @media (prefers-reduced-motion: reduce) { #cat, #cat[class], #cat.is-grudge::before, #info[open], #bubble.is-pop, .dots i, #intro-bubble, #intro-cat { animation: none; } #cat img { transition: none; } }
     #cat img { transform-origin: 50% 100%; transform: rotate(var(--lean, 0deg)); transition: transform .4s ease; }
     .dots { display: inline-flex; gap: 5px; padding: 5px 2px; vertical-align: middle; }
     .dots i { width: 7px; height: 7px; border-radius: 50%; background: #8e8e93; animation: dot 1s ease-in-out infinite; }
@@ -83,7 +96,10 @@
     .dots i:nth-child(3) { animation-delay: .3s; }
     @keyframes dot { 0%, 60%, 100% { transform: translateY(0); opacity: .4; } 30% { transform: translateY(-4px); opacity: 1; } }
     body.is-intro #overlay, body.is-intro #panel { display: none; }
-    #info { box-sizing: border-box; width: min(92vw, 420px); max-height: 80vh; max-height: 80dvh; padding: 0; border: 0; border-radius: 20px; background: #fff; color: var(--ink); overflow: auto; overscroll-behavior: contain; -webkit-user-select: text; user-select: text; }
+    /* "Как это" is a bottom sheet: it slides up from the panel the visitor just tapped. */
+    #info { box-sizing: border-box; width: 100%; max-width: 480px; max-height: 86vh; max-height: 86dvh; margin: auto auto 0; padding: 0; border: 0; border-radius: 24px 24px 0 0; background: #fff; color: var(--ink); overflow: auto; overscroll-behavior: contain; -webkit-user-select: text; user-select: text; }
+    #info[open] { animation: sheet .3s cubic-bezier(.2, .8, .2, 1); }
+    @keyframes sheet { from { transform: translateY(100%); } to { transform: none; } }
     #info::backdrop, #photo::backdrop { background: rgba(0, 0, 0, .55); }
     #photo { box-sizing: border-box; width: min(92vw, 420px); max-height: 90vh; max-height: 90dvh; padding: 16px; border: 0; border-radius: 20px; background: #fff; color: var(--ink); overflow: auto; text-align: center; }
     /* Long-press must reach the image: that is how iOS saves it when sharing is unavailable. */
@@ -94,12 +110,19 @@
     #photo a, #photo button { flex: 1; display: grid; place-items: center; min-height: 48px; border: 0; border-radius: 999px; font: inherit; font-size: 16px; font-weight: 700; text-decoration: none; }
     #photo a { background: rgba(0, 0, 0, .08); color: var(--ink); }
     #photo button { background: var(--orange); color: var(--ink); }
-    .info-body { padding: 20px 22px 22px; }
-    .info-body h2 { margin: 0 0 12px; font-size: 22px; outline: none; }
-    .info-body p { margin: 0 0 10px; font-size: 15px; line-height: 1.45; }
-    .info-body b { font-weight: 700; }
-    .info-body form { margin: 16px 0 0; }
-    .info-body form button { width: 100%; min-height: 48px; border: 0; border-radius: 999px; background: var(--orange); color: var(--ink); font: inherit; font-size: 17px; font-weight: 700; }
+    .info-body { padding: 8px 20px calc(16px + env(safe-area-inset-bottom)); }
+    .sheet-handle { width: 40px; height: 5px; margin: 0 auto 14px; border-radius: 3px; background: rgba(0, 0, 0, .15); }
+    .info-head { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+    .info-head img { width: 60px; height: 60px; flex: none; border-radius: 50%; background: #ffe6cc; object-fit: cover; }
+    .info-head h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.01em; outline: none; }
+    .info-head p { margin: 2px 0 0; font-size: 14px; color: #6e6e73; }
+    .info-list { margin: 0; padding: 0; list-style: none; }
+    .info-list li { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-top: 1px solid rgba(0, 0, 0, .07); font-size: 15px; line-height: 1.4; }
+    .info-list li:first-child { border-top: 0; }
+    .info-list b { font-weight: 700; }
+    .info-icon { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; background: #fff1e3; font-size: 20px; line-height: 1; }
+    .info-body form { position: sticky; bottom: 0; margin: 4px -20px 0; padding: 12px 20px 0; background: linear-gradient(rgba(255, 255, 255, 0), #fff 14px); }
+    .info-body form button { width: 100%; min-height: 50px; border: 0; border-radius: 999px; background: var(--orange); color: var(--ink); font: inherit; font-size: 17px; font-weight: 700; }
     #intro { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom)); background: radial-gradient(circle at 50% 45%, #2a1d14 0%, #111 70%); text-align: center; }
     #intro h1 { margin: 0; font-size: clamp(28px, 8vw, 40px); font-weight: 800; letter-spacing: -.02em; color: #fff; }
     #intro h1 span { color: var(--orange); }
@@ -148,14 +171,22 @@
   </section>
   <dialog id="info" aria-labelledby="info-title">
     <div class="info-body">
-      <!-- autofocus on the title: otherwise the dialog focuses the button at the bottom and opens scrolled down. -->
-      <h2 id="info-title" tabindex="-1" autofocus>Как это работает</h2>
-      <p><b>Тапни</b> по предмету или человеку, и кот скажет, что он об этом думает.</p>
-      <p><b>Удержи палец</b> на человеке, и кот на него обидится. Он никого не запоминает: человек ушёл из кадра, и обида прошла.</p>
-      <p><b>Глазами кошки.</b> Кошки почти не различают красный и зелёный и видят мир мутнее нас. Зато они лучше замечают движение и видят в темноте. Кнопка «Кошка / Человек» переключает зрение.</p>
-      <p><b>Предметы</b> узнаёт нейросеть. Ей уходит только маленький кусочек кадра вокруг пальца, и лица на нём закрашены.</p>
-      <p><b>Лица</b> не покидают телефон. Эмоцию кот угадывает прямо здесь.</p>
-      <p><b>«Сохранить»</b> делает фото с котом и его фразой. Фото остаётся только у тебя.</p>
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="info-head">
+        <img src="/assets/cat/curious.webp" alt="" width="60" height="60">
+        <div>
+          <!-- autofocus on the title: otherwise the dialog focuses the button at the bottom and opens scrolled down. -->
+          <h2 id="info-title" tabindex="-1" autofocus>Как это работает</h2>
+          <p>Кот смотрит на мир вместе с тобой</p>
+        </div>
+      </div>
+      <ul class="info-list">
+        <li><span class="info-icon" aria-hidden="true">👆</span><div><b>Тапни</b> по предмету или человеку, и кот скажет, что он об этом думает.</div></li>
+        <li><span class="info-icon" aria-hidden="true">😾</span><div><b>Удержи палец</b> на человеке, и кот обидится. Обида проходит, когда человек уходит из кадра.</div></li>
+        <li><span class="info-icon" aria-hidden="true">👁️</span><div><b>Глазами кошки.</b> Красный и зелёный для кошки почти один цвет, и мир она видит мутнее нас. Зато видит в темноте и замечает любое движение.</div></li>
+        <li><span class="info-icon" aria-hidden="true">🔒</span><div><b>Лица не покидают телефон.</b> Эмоцию кот угадывает прямо здесь. Предмет узнаёт нейросеть по кусочку кадра, лица на нём закрашены.</div></li>
+        <li><span class="info-icon" aria-hidden="true">📸</span><div><b>«Сохранить»</b> делает фото с котом и его фразой. Фото остаётся только у тебя.</div></li>
+      </ul>
       <form method="dialog"><button>Понятно</button></form>
     </div>
   </dialog>
