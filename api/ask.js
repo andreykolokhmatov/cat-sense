@@ -70,9 +70,9 @@ export function userPrompt(ask) {
 }
 
 // Thinking adds seconds the phone does not have; a one-liner does not need it. Gemini 2.x
-// turns it off with a budget, Gemini 3+ only takes a level.
+// turns it off with a budget; Gemini 3+ only takes a level, and 3.8 Flash rejects MINIMAL.
 export function thinkingConfig(model) {
-  return /^gemini-2\./.test(model) ? { thinkingBudget: 0 } : { thinkingLevel: 'minimal' };
+  return /^gemini-2\./.test(model) ? { thinkingBudget: 0 } : { thinkingLevel: 'low' };
 }
 
 export function geminiRequest(ask, model = DEFAULT_MODEL) {

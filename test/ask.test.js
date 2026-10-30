@@ -101,8 +101,8 @@ test('geminiRequest asks for JSON with the mood enum', () => {
 
 test('thinking is switched off in the form each model generation accepts', () => {
   assert.deepEqual(thinkingConfig('gemini-2.5-flash'), { thinkingBudget: 0 });
-  assert.deepEqual(thinkingConfig('gemini-3.8-flash'), { thinkingLevel: 'minimal' });
-  assert.deepEqual(geminiRequest(cupAsk).generationConfig.thinkingConfig, { thinkingLevel: 'minimal' });
+  assert.deepEqual(thinkingConfig('gemini-3.8-flash'), { thinkingLevel: 'low' });
+  assert.deepEqual(geminiRequest(cupAsk).generationConfig.thinkingConfig, { thinkingLevel: 'low' });
 });
 
 test('parseReply returns trimmed text and mood', () => {
