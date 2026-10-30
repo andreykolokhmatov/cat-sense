@@ -1,5 +1,5 @@
 import { startCamera } from './camera.js';
-import { playMeow, say, think, unlockAudio } from './cat.js';
+import { lookAt, playMeow, say, think, unlockAudio } from './cat.js';
 import { getDetections, startDetection } from './detect.js';
 import { askCat } from './logic/askCat.js';
 import { screenToVideo, videoFrame } from './logic/coverMap.js';
@@ -13,6 +13,9 @@ const MINIMAL_PHRASES = { objects: {}, emotions: {}, fallback: { mood: 'curious'
 const video = document.getElementById('video');
 const overlay = document.getElementById('overlay');
 const startButton = document.getElementById('start');
+const intro = document.getElementById('intro');
+const introBubble = document.getElementById('intro-bubble');
+const introImg = document.getElementById('intro-img');
 const debugCrop = document.getElementById('debug-crop');
 const debug = new URLSearchParams(window.location.search).has('debug');
 
@@ -47,6 +50,7 @@ async function handleTap(event) {
 
   busy = true;
   const target = pickTarget(tap, getDetections()) ?? { kind: 'object', label: 'unknown', bbox: tapBox(tap) };
+  lookAt(event.clientX, event.clientY);
   think();
   const image = target.kind === 'object' ? snapshot(video, target) : null;
   if (debug && image) showDebugCrop(image);
@@ -63,11 +67,14 @@ async function handleStart() {
   startButton.disabled = true;
   const problem = await startCamera(video);
   if (problem) {
-    say(problem, 'scared');
+    introBubble.textContent = problem;
+    introImg.src = '/assets/cat/scared.webp';
     startButton.disabled = false;
     return;
   }
-  startButton.hidden = true;
+  intro.hidden = true;
+  document.body.classList.remove('is-intro');
+  say('Мяу! Тапни по чему-нибудь.', 'happy');
   startDetection(video, startOverlay(overlay, video, getDetections));
   overlay.addEventListener('click', handleTap);
 }
