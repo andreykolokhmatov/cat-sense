@@ -5,6 +5,7 @@ import { videoFrame, visibleSource } from './logic/coverMap.js';
 // <video>: the colour matrix silently did nothing there, only the blur showed.
 const MAX_PIXEL_RATIO = 2;
 const HAVE_CURRENT_DATA = 2;
+const PLAY_RETRY_MS = 1000;
 
 const VERTEX = `
 attribute vec2 position;
@@ -144,9 +145,20 @@ export function startCatView(canvas, video, { isOn, onFail }) {
     }
   }
 
-  function loop() {
+  // iOS may pause a video it considers hidden; the filter would then show one still frame.
+  let lastPlayTry = 0;
+  function keepPlaying(now) {
+    if (!video.paused || now - lastPlayTry < PLAY_RETRY_MS) return;
+    lastPlayTry = now;
+    video.play().catch(() => {});
+  }
+
+  function loop(now) {
     if (failed) return;
-    if (isOn() && !document.hidden) render();
+    if (isOn() && !document.hidden) {
+      keepPlaying(now);
+      render();
+    }
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);

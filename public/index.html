@@ -28,9 +28,12 @@
     /* The overlay must cover exactly the video box: taps are mapped through the video's rect. */
     video, #catview, #overlay { position: fixed; top: 0; left: 0; width: 100%; height: var(--camera-h); }
     video { object-fit: cover; }
-    /* Cat vision is drawn by WebGL over the video, which keeps playing underneath. */
+    /* Cat vision is drawn by WebGL under the video. The video stays on top at 1% opacity:
+       an iPhone home-screen app stops updating a video that a canvas covers completely,
+       and the cat view froze on the first frame. */
     #catview { display: none; pointer-events: none; }
     body.is-cat:not(.is-cat-css) #catview { display: block; }
+    body.is-cat:not(.is-cat-css) video { opacity: .01; }
     /* Without WebGL: CSS cannot fold red into green, so this only hints at cat vision. */
     body.is-cat.is-cat-css video { filter: saturate(.4) sepia(.3) brightness(1.08) blur(1.5px); }
     #overlay { touch-action: manipulation; }
@@ -106,8 +109,8 @@
   </style>
 </head>
 <body class="is-intro is-cat">
-  <video id="video" playsinline muted autoplay></video>
   <canvas id="catview"></canvas>
+  <video id="video" playsinline muted autoplay></video>
   <canvas id="overlay"></canvas>
   <div id="panel">
     <div class="panel-buttons">
