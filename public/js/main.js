@@ -8,6 +8,8 @@ import { pickTarget } from './logic/pickTarget.js';
 import { startOverlay } from './overlay.js';
 import { snapshot } from './snapshot.js';
 
+// A fallback phrase comes back instantly; without a pause the dots would only flicker.
+const MIN_THINK_MS = 700;
 const MINIMAL_PHRASES = { objects: {}, emotions: {}, fallback: { mood: 'curious', lines: ['Мяу?'] } };
 
 const video = document.getElementById('video');
@@ -55,7 +57,8 @@ async function handleTap(event) {
   const image = target.kind === 'object' ? snapshot(video, target) : null;
   if (debug && image) showDebugCrop(image);
 
-  const { text, mood } = await askCat({ target, image, phrases, lastText });
+  const minThink = new Promise((resolve) => setTimeout(resolve, MIN_THINK_MS));
+  const [{ text, mood }] = await Promise.all([askCat({ target, image, phrases, lastText }), minThink]);
   say(text, mood);
   playMeow();
   lastText = text;

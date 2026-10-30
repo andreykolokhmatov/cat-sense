@@ -9,6 +9,10 @@ const MAX_LEAN_DEG = 10;
 const LEAN_MS = 3500;
 const BLINK_MS = 150;
 const BLINK_GAP_MS = { min: 2500, max: 6000 };
+// Long replies type faster so the whole line never takes more than TYPE_MAX_MS.
+const TYPE_CHAR_MS = 25;
+const TYPE_MAX_MS = 900;
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const catEl = document.getElementById('cat');
 const catImg = document.getElementById('cat-img');
@@ -19,6 +23,7 @@ const emojiEl = document.createElement('span');
 catEl.append(emojiEl);
 let pose = POSES.curious;
 let leanTimer = null;
+let typeTimer = null;
 let audioContext = null;
 
 // A missing picture must not leave an empty corner: the demo falls back to the emoji pose.
@@ -48,9 +53,35 @@ function show(name) {
   restartClass(catEl, `is-${POSES[name] ? name : 'curious'}`);
 }
 
-function setBubble(content) {
-  bubbleEl.replaceChildren(content);
+function setBubble(...content) {
+  clearInterval(typeTimer);
+  bubbleEl.removeAttribute('aria-busy');
+  bubbleEl.replaceChildren(...content);
   restartClass(bubbleEl, 'is-pop');
+}
+
+// The untyped rest stays in the layout but invisible, so the bubble opens at its final size
+// instead of growing and jumping line by line. aria-busy keeps screen readers from reading
+// every letter.
+function typeBubble(text) {
+  const chars = Array.from(text);
+  if (reducedMotion || chars.length < 2) return setBubble(text);
+  const typed = document.createElement('span');
+  const rest = document.createElement('span');
+  rest.style.visibility = 'hidden';
+  rest.textContent = text;
+  setBubble(typed, rest);
+  bubbleEl.setAttribute('aria-busy', 'true');
+
+  let shown = 0;
+  typeTimer = setInterval(() => {
+    shown += 1;
+    typed.textContent = chars.slice(0, shown).join('');
+    rest.textContent = chars.slice(shown).join('');
+    if (shown < chars.length) return;
+    clearInterval(typeTimer);
+    bubbleEl.removeAttribute('aria-busy');
+  }, Math.min(TYPE_CHAR_MS, TYPE_MAX_MS / chars.length));
 }
 
 function thinkingDots() {
@@ -96,7 +127,7 @@ function scheduleBlink() {
   }, gap);
 }
 
-if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) scheduleBlink();
+if (!reducedMotion) scheduleBlink();
 
 export function think() {
   show('think');
@@ -105,7 +136,7 @@ export function think() {
 
 export function say(text, mood) {
   show(mood);
-  setBubble(text);
+  typeBubble(text);
   clearTimeout(leanTimer);
   leanTimer = setTimeout(() => catEl.style.removeProperty('--lean'), LEAN_MS);
 }
