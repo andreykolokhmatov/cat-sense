@@ -1,4 +1,5 @@
 import { videoFrame, videoToScreen } from './logic/coverMap.js';
+import { captionOf } from './logic/labels.js';
 
 const MAX_PIXEL_RATIO = 2;
 const BOX_COLOR = '#f5a623';
@@ -16,10 +17,6 @@ function fitCanvas(canvas, rect) {
     canvas.height = height;
   }
   return ratio;
-}
-
-function captionOf(detection) {
-  return detection.kind === 'person' ? detection.emotion : detection.label;
 }
 
 function drawLabel(context, text, [x, y]) {
