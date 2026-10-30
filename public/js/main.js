@@ -113,7 +113,11 @@ function setUpPanel() {
   if (params.has('catcss')) useCssCatVision();
   visionButton.addEventListener('click', () => setCatMode(!document.body.classList.contains('is-cat')));
   document.getElementById('save-button').addEventListener('click', handleSave);
-  document.getElementById('info-button').addEventListener('click', () => infoDialog.showModal());
+  document.getElementById('info-button').addEventListener('click', () => {
+    infoDialog.showModal();
+    // Safari may ignore autofocus inside a dialog; the text must still start at the top.
+    infoDialog.scrollTop = 0;
+  });
   infoDialog.addEventListener('click', closeOnBackdrop);
 }
 
