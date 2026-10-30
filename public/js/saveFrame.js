@@ -14,9 +14,13 @@ const SOFTEN_SCALE = 0.4;
 const CAT_HEIGHT = 340;
 const BUBBLE = { font: `600 44px ${FONT}`, lineHeight: 58, pad: 30, radius: 40, maxWidth: 680, maxLines: 6, tail: 18 };
 const JPEG_QUALITY = 0.9;
-const REVOKE_MS = 10_000;
 
-function drawCamera(ctx, video, view, catMode, height) {
+function drawCamera(ctx, { video, view, catMode, catCanvas }, height) {
+  // The live WebGL picture already has the matrix, blur and vignette: reuse it as is.
+  if (catCanvas) {
+    ctx.drawImage(catCanvas, 0, 0, WIDTH, height);
+    return;
+  }
   const { sx, sy, sw, sh } = visibleSource(view, videoFrame(video));
   if (!catMode) {
     ctx.drawImage(video, sx, sy, sw, sh, 0, 0, WIDTH, height);
@@ -84,14 +88,15 @@ function drawBubble(ctx, text, bottom) {
   lines.forEach((line, i) => ctx.fillText(line, left + pad, top + pad + lineHeight * (i + 0.5)));
 }
 
-// view is the on-screen size of the camera area, { width, height }.
-export function composeFrame({ video, view, catMode, catImg, text }) {
+// view is the on-screen size of the camera area, { width, height }. catCanvas is the live
+// cat-vision canvas, freshly drawn in this task, or null.
+export function composeFrame({ video, view, catMode, catCanvas, catImg, text }) {
   const cameraHeight = Math.round((WIDTH * view.height) / view.width);
   const canvas = document.createElement('canvas');
   canvas.width = WIDTH;
   canvas.height = cameraHeight + STRIP_HEIGHT;
   const ctx = canvas.getContext('2d');
-  drawCamera(ctx, video, view, catMode, cameraHeight);
+  drawCamera(ctx, { video, view, catMode, catCanvas }, cameraHeight);
   drawStrip(ctx, cameraHeight);
   const catTop = drawCat(ctx, catImg, canvas.height);
   if (text) drawBubble(ctx, text, catTop);
@@ -104,15 +109,15 @@ function fileName() {
   return `cat-sense-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.jpg`;
 }
 
-function download(file) {
-  const url = URL.createObjectURL(file);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = file.name;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), REVOKE_MS);
+// A download does nothing in an app started from the iPhone home screen, so the fallback
+// shows the photo: a long press saves it to Photos there, the link downloads it elsewhere.
+function showPhoto(dataUrl, name) {
+  const dialog = document.getElementById('photo');
+  dialog.querySelector('img').src = dataUrl;
+  const link = dialog.querySelector('a');
+  link.href = dataUrl;
+  link.download = name;
+  dialog.showModal();
 }
 
 // Everything up to navigator.share stays synchronous: after an await Safari no longer treats
@@ -125,9 +130,9 @@ export function saveFrame(options) {
 
   if (navigator.canShare?.({ files: [file] })) {
     navigator.share({ files: [file] }).catch((error) => {
-      if (error.name !== 'AbortError') download(file);
+      if (error.name !== 'AbortError') showPhoto(dataUrl, file.name);
     });
     return;
   }
-  download(file);
+  showPhoto(dataUrl, file.name);
 }

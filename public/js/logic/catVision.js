@@ -22,14 +22,12 @@ export function scale(m, k) {
   return m.map((row) => row.map((value) => value * k));
 }
 
-// Deuteranopia first, then a little less saturation and a little more light.
-export const CAT_MATRIX = scale(multiply(saturationMatrix(0.8), DEUTERANOPIA), 1.05);
-export const CAT_BLUR_PX = 1;
-
-export function toFeColorMatrixValues(m) {
-  const round = (value) => Number(value.toFixed(6));
-  return [...m.map((row) => [...row.map(round), 0, 0]), [0, 0, 0, 1, 0]].flat().join(' ');
-}
+// Deuteranopia first, then less saturation and a little more light.
+export const CAT_MATRIX = scale(multiply(saturationMatrix(0.7), DEUTERANOPIA), 1.05);
+// Cats see several times less detail than people. Blur step in CSS pixels on screen.
+export const CAT_BLUR_PX = 2;
+// Darkening at the frame edges, 0..1: a hint that the cat looks at the centre.
+export const CAT_VIGNETTE = 0.35;
 
 // Edits RGBA pixels in place. Uint8ClampedArray clamps every write to 0..255; alpha is kept.
 export function applyMatrix(rgba, m) {

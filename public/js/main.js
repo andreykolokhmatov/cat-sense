@@ -1,8 +1,8 @@
 import { startCamera } from './camera.js';
+import { startCatView } from './catView.js';
 import { currentLine, lookAt, playMeow, say, think, unlockAudio } from './cat.js';
 import { getDetections, startDetection } from './detect.js';
 import { askCat } from './logic/askCat.js';
-import { CAT_BLUR_PX, CAT_MATRIX, toFeColorMatrixValues } from './logic/catVision.js';
 import { screenToVideo, videoFrame } from './logic/coverMap.js';
 import { tapBox } from './logic/cropRegion.js';
 import { pickTarget } from './logic/pickTarget.js';
@@ -21,6 +21,7 @@ const intro = document.getElementById('intro');
 const introBubble = document.getElementById('intro-bubble');
 const introImg = document.getElementById('intro-img');
 const debugCrop = document.getElementById('debug-crop');
+const catCanvas = document.getElementById('catview');
 const visionButton = document.getElementById('vision-button');
 const visionLabel = document.getElementById('vision-label');
 const infoDialog = document.getElementById('info');
@@ -30,6 +31,7 @@ const debug = params.has('debug');
 let phrases = MINIMAL_PHRASES;
 let lastText = null;
 let busy = false;
+let catView = null;
 
 async function loadPhrases() {
   try {
@@ -77,12 +79,28 @@ function setCatMode(on) {
   visionLabel.textContent = on ? 'Кошка' : 'Человек';
 }
 
+function liveCatView() {
+  return document.body.classList.contains('is-cat') && !document.body.classList.contains('is-cat-css');
+}
+
 // No await before saveFrame: Safari opens the share sheet only inside the tap itself.
 function handleSave() {
   if (!video.videoWidth) return;
   const { width, height } = video.getBoundingClientRect();
   const { text, img } = currentLine();
-  saveFrame({ video, view: { width, height }, catMode: document.body.classList.contains('is-cat'), catImg: img, text });
+  const catMode = document.body.classList.contains('is-cat');
+  // Drawn again right here: a WebGL canvas is only readable in the task that drew it.
+  const fresh = liveCatView() && catView?.render() ? catCanvas : null;
+  try {
+    saveFrame({ video, view: { width, height }, catMode, catCanvas: fresh, catImg: img, text });
+  } catch (error) {
+    console.warn('Saving the frame failed', error);
+    say('Не получилось сохранить. Попробуй ещё раз.', 'scared');
+  }
+}
+
+function useCssCatVision() {
+  document.body.classList.add('is-cat-css');
 }
 
 // A click on the dialog element itself is a click on the backdrop: the content has its own box.
@@ -91,10 +109,8 @@ function closeOnBackdrop(event) {
 }
 
 function setUpPanel() {
-  document.getElementById('cat-matrix').setAttribute('values', toFeColorMatrixValues(CAT_MATRIX));
-  document.documentElement.style.setProperty('--cat-blur', `${CAT_BLUR_PX}px`);
-  // ?catcss switches to the plain CSS filter, for phones where the SVG filter misbehaves.
-  document.body.classList.toggle('is-cat-css', params.has('catcss'));
+  // ?catcss forces the plain CSS filter, to compare with the WebGL one on a phone.
+  if (params.has('catcss')) useCssCatVision();
   visionButton.addEventListener('click', () => setCatMode(!document.body.classList.contains('is-cat')));
   document.getElementById('save-button').addEventListener('click', handleSave);
   document.getElementById('info-button').addEventListener('click', () => infoDialog.showModal());
@@ -115,6 +131,10 @@ async function handleStart() {
   document.body.classList.remove('is-intro');
   say('Мяу! Тапни по чему-нибудь.', 'happy');
   startDetection(video);
+  if (!params.has('catcss')) {
+    catView = startCatView(catCanvas, video, { isOn: liveCatView, onFail: useCssCatVision });
+    if (!catView) useCssCatVision();
+  }
   overlay.addEventListener('click', handleTap);
 }
 

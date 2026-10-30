@@ -23,15 +23,16 @@
       --panel-h: calc(var(--screen-h) * .3 + env(safe-area-inset-bottom));
       --camera-h: calc(var(--screen-h) - var(--panel-h));
       --cat-size: min(42vw, 180px, calc(var(--panel-h) - env(safe-area-inset-bottom) - 2 * var(--panel-pad)));
-      --cat-blur: 1px;
     }
     @supports (height: 100dvh) { :root { --screen-h: 100dvh; } }
     /* The overlay must cover exactly the video box: taps are mapped through the video's rect. */
-    video, #overlay { position: fixed; top: 0; left: 0; width: 100%; height: var(--camera-h); }
+    video, #catview, #overlay { position: fixed; top: 0; left: 0; width: 100%; height: var(--camera-h); }
     video { object-fit: cover; }
-    body.is-cat video { filter: url(#cat-vision) blur(var(--cat-blur)); }
-    /* Fallback for a black or stuttering SVG filter on iPhone: no colour-blind simulation live. */
-    body.is-cat.is-cat-css video { filter: saturate(.5) brightness(1.1) contrast(.95) blur(.6px); }
+    /* Cat vision is drawn by WebGL over the video, which keeps playing underneath. */
+    #catview { display: none; pointer-events: none; }
+    body.is-cat:not(.is-cat-css) #catview { display: block; }
+    /* Without WebGL: CSS cannot fold red into green, so this only hints at cat vision. */
+    body.is-cat.is-cat-css video { filter: saturate(.4) sepia(.3) brightness(1.08) blur(1.5px); }
     #overlay { touch-action: manipulation; }
     #panel { position: fixed; left: 0; right: 0; bottom: 0; height: var(--panel-h); box-sizing: border-box; display: flex; align-items: center; padding: var(--panel-pad) calc(var(--panel-pad) + env(safe-area-inset-right)) calc(var(--panel-pad) + env(safe-area-inset-bottom)) calc(var(--panel-pad) + env(safe-area-inset-left)); background: var(--orange); }
     .panel-buttons { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 8px; width: calc(100% - var(--cat-size) - 8px); height: 100%; max-height: 180px; }
@@ -74,7 +75,16 @@
     @keyframes dot { 0%, 60%, 100% { transform: translateY(0); opacity: .4; } 30% { transform: translateY(-4px); opacity: 1; } }
     body.is-intro #cat, body.is-intro #bubble, body.is-intro #overlay, body.is-intro #panel { display: none; }
     #info { box-sizing: border-box; width: min(92vw, 420px); max-height: 80vh; max-height: 80dvh; padding: 0; border: 0; border-radius: 20px; background: #fff; color: var(--ink); overflow: auto; overscroll-behavior: contain; -webkit-user-select: text; user-select: text; }
-    #info::backdrop { background: rgba(0, 0, 0, .55); }
+    #info::backdrop, #photo::backdrop { background: rgba(0, 0, 0, .55); }
+    #photo { box-sizing: border-box; width: min(92vw, 420px); max-height: 90vh; max-height: 90dvh; padding: 16px; border: 0; border-radius: 20px; background: #fff; color: var(--ink); overflow: auto; text-align: center; }
+    /* Long-press must reach the image: that is how iOS saves it when sharing is unavailable. */
+    #photo img { display: block; width: 100%; max-height: 60vh; max-height: 60dvh; object-fit: contain; border-radius: 12px; -webkit-touch-callout: default; -webkit-user-select: auto; user-select: auto; }
+    #photo p { margin: 12px 0; font-size: 15px; line-height: 1.4; }
+    #photo .photo-actions { display: flex; gap: 8px; }
+    #photo form { flex: 1; display: flex; margin: 0; }
+    #photo a, #photo button { flex: 1; display: grid; place-items: center; min-height: 48px; border: 0; border-radius: 999px; font: inherit; font-size: 16px; font-weight: 700; text-decoration: none; }
+    #photo a { background: rgba(0, 0, 0, .08); color: var(--ink); }
+    #photo button { background: var(--orange); color: var(--ink); }
     .info-body { padding: 20px 22px 22px; }
     .info-body h2 { margin: 0 0 12px; font-size: 22px; }
     .info-body p { margin: 0 0 10px; font-size: 15px; line-height: 1.45; }
@@ -96,12 +106,8 @@
   </style>
 </head>
 <body class="is-intro is-cat">
-  <svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false">
-    <filter id="cat-vision" color-interpolation-filters="sRGB">
-      <feColorMatrix id="cat-matrix" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0"/>
-    </filter>
-  </svg>
   <video id="video" playsinline muted autoplay></video>
+  <canvas id="catview"></canvas>
   <canvas id="overlay"></canvas>
   <div id="panel">
     <div class="panel-buttons">
@@ -138,6 +144,14 @@
       <p><b>Кошачье зрение.</b> Кошки почти не отличают красный от зелёного, как люди-дихроматы, и видят чуть размыто. Кнопка «Кошка / Человек» включает и выключает этот фильтр.</p>
       <p><b>«Сохранить»</b> делает фото с котом и его репликой. Фото остаётся на твоём телефоне и никуда не отправляется. Лица на нём не закрыты.</p>
       <form method="dialog"><button>Понятно</button></form>
+    </div>
+  </dialog>
+  <dialog id="photo" aria-label="Фото с котом">
+    <img alt="Кадр с котом и его репликой">
+    <p>Нажми на фото и удерживай, потом «Сохранить в Фото».</p>
+    <div class="photo-actions">
+      <a download>Скачать</a>
+      <form method="dialog"><button>Готово</button></form>
     </div>
   </dialog>
   <img id="debug-crop" alt="" hidden>

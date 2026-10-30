@@ -7,7 +7,6 @@ import {
   multiply,
   saturationMatrix,
   scale,
-  toFeColorMatrixValues,
 } from '../public/js/logic/catVision.js';
 
 const IDENTITY = [
@@ -67,12 +66,4 @@ test('full saturation is identity and scale multiplies every cell', () => {
     [0, 2, 0],
     [0, 0, 2],
   ]);
-});
-
-test('toFeColorMatrixValues gives a 4x5 matrix with untouched alpha', () => {
-  const values = toFeColorMatrixValues(CAT_MATRIX).split(' ').map(Number);
-  assert.equal(values.length, 20);
-  assert.ok(values.every(Number.isFinite));
-  assert.deepEqual(values.slice(15), [0, 0, 0, 1, 0]);
-  assert.deepEqual([values[4], values[9], values[14]], [0, 0, 0]);
 });
