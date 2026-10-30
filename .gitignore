@@ -1,0 +1,15 @@
+# Secrets: the LLM key lives only here and in the hosting env
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Per-session hook state and personal Claude settings
+.claude/sessions/
+.claude/settings.local.json
+
+# OS cruft
+.DS_Store
+Thumbs.db
