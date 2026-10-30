@@ -12,11 +12,14 @@ const BLINK_GAP_MS = { min: 2500, max: 6000 };
 // Long replies type faster so the whole line never takes more than TYPE_MAX_MS.
 const TYPE_CHAR_MS = 25;
 const TYPE_MAX_MS = 900;
+// Each size is one reflow, so the list stays short; 13px still fits about 12 words on a 375px phone.
+const BUBBLE_FONT_PX = [16, 14, 13, 12];
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const catEl = document.getElementById('cat');
 const catImg = document.getElementById('cat-img');
 const bubbleEl = document.getElementById('bubble');
+const bubbleText = bubbleEl.querySelector('.bubble-text');
 const introCat = document.getElementById('intro-cat');
 const introImg = document.getElementById('intro-img');
 const emojiEl = document.createElement('span');
@@ -53,12 +56,31 @@ function show(name) {
   restartClass(catEl, `is-${POSES[name] ? name : 'curious'}`);
 }
 
+function overflows() {
+  return bubbleText.scrollHeight > bubbleText.clientHeight + 1;
+}
+
+// The bubble cannot grow past its grid row, so a long line takes a smaller font instead.
+// Past the smallest font the text is cut on a whole line, not through the middle of one.
+function fitBubble() {
+  bubbleText.style.webkitLineClamp = '';
+  for (const size of BUBBLE_FONT_PX) {
+    bubbleEl.style.fontSize = `${size}px`;
+    if (!overflows()) return;
+  }
+  const lineHeight = parseFloat(getComputedStyle(bubbleText).lineHeight);
+  if (lineHeight > 0) bubbleText.style.webkitLineClamp = String(Math.max(1, Math.floor(bubbleText.clientHeight / lineHeight)));
+}
+
 function setBubble(...content) {
   clearInterval(typeTimer);
   bubbleEl.removeAttribute('aria-busy');
-  bubbleEl.replaceChildren(...content);
+  bubbleText.replaceChildren(...content);
+  fitBubble();
   restartClass(bubbleEl, 'is-pop');
 }
+
+window.addEventListener('resize', fitBubble);
 
 // The untyped rest stays in the layout but invisible, so the bubble opens at its final size
 // instead of growing and jumping line by line. aria-busy keeps screen readers from reading

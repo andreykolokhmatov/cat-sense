@@ -1,11 +1,16 @@
-import { MOODS, pickPhrase } from './pickPhrase.js';
+import { GRUDGES, MOODS, pickPhrase } from './pickPhrase.js';
 
 export const ASK_TIMEOUT_MS = 9500;
 
 // null means there is nothing safe to send. A person never carries an image, even if one
-// was passed: only the emotion name may leave the phone.
+// was passed: only the emotion name and the grudge may leave the phone, never the box or
+// the track id.
 export function askBody(target, image) {
-  if (target.kind === 'person') return { kind: 'person', emotion: target.emotion };
+  if (target.kind === 'person') {
+    const body = { kind: 'person', emotion: target.emotion };
+    if (GRUDGES.includes(target.grudge)) body.grudge = target.grudge;
+    return body;
+  }
   if (!image) return null;
   return { kind: 'object', label: target.label, image };
 }

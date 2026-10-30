@@ -9,6 +9,7 @@ export const GEMINI_TIMEOUT_MS = 8000;
 // A 512 px JPEG crop is ~100 KB in base64; anything far bigger is not from our page.
 export const MAX_IMAGE_CHARS = 400_000;
 export const MAX_TEXT_CHARS = 200;
+export const GRUDGES = ['start', 'again'];
 const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
 
 export const SYSTEM_PROMPT = `Ты домашний кот, маскот приложения "Кошачье чутьё". Человек навёл камеру телефона на что-то и тапнул по экрану, а ты комментируешь это в пузыре рядом с собой.
@@ -22,6 +23,7 @@ export const SYSTEM_PROMPT = `Ты домашний кот, маскот при�
 - Если картинка размытая, тёмная или на ней ничего нет: смешно признайся, что не разглядел, и предположи что-нибудь.
 - Чёрные прямоугольники на картинке закрывают лица людей. Не упоминай их и не гадай, кто там.
 - Если назвали эмоцию человека: отреагируй на неё как кот, и каждый раз придумывай новый повод. Кот может радоваться вместе, насторожиться, спрятаться, подлизаться, обидеться, позвать гладить, похвастаться, что-то потребовать.
+- Если сказано, что ты обиделся на человека или всё ещё обижен: отвечай недовольно и надменно. Можно отвернуться, демонстративно умываться, требовать извинений вкусняшкой. Без грубости и оскорблений, ни слова о внешности, теле, возрасте, поле и одежде.
 - Не застревай на еде. У кота много тем: сон, коробки, тёплый ноутбук, лазерная точка, птицы за окном, топот в пять утра, вещи на краю стола.
 - Не обсуждай внешность, тело, возраст, пол и одежду людей. Не груби, не ругайся, никакой политики, религии и опасных советов. Ты кот для всей семьи.
 
@@ -52,7 +54,10 @@ export function parseAsk(body) {
     }
   }
   if (body?.kind === 'person') {
-    return Object.hasOwn(EMOTION_LABELS, body.emotion) ? { kind: 'person', emotion: body.emotion } : null;
+    const { emotion, grudge } = body;
+    if (!Object.hasOwn(EMOTION_LABELS, emotion)) return null;
+    if (grudge === undefined) return { kind: 'person', emotion };
+    return GRUDGES.includes(grudge) ? { kind: 'person', emotion, grudge } : null;
   }
   if (body?.kind !== 'object') return null;
   const { label, image } = body;
@@ -63,7 +68,14 @@ export function parseAsk(body) {
 
 export function userPrompt(ask) {
   if (ask.kind === 'person') {
-    return `Перед тобой человек. Его эмоция: ${EMOTION_LABELS[ask.emotion]}. Картинки нет.`;
+    const emotion = EMOTION_LABELS[ask.emotion];
+    if (ask.grudge === 'start') {
+      return `Перед тобой человек. Его эмоция: ${emotion}. Картинки нет. Ты только что обиделся на этого человека. Скажи ему об этом.`;
+    }
+    if (ask.grudge === 'again') {
+      return `Перед тобой человек, на которого ты обижен. Его эмоция: ${emotion}. Картинки нет. Напомни, что ты всё ещё в обиде, и придумай новый повод.`;
+    }
+    return `Перед тобой человек. Его эмоция: ${emotion}. Картинки нет.`;
   }
   if (ask.label === 'unknown') {
     return 'Человек тапнул по тому, что в центре картинки. Пойми по картинке, что это, и отреагируй.';

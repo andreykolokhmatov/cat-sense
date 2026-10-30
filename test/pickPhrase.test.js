@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { MOODS, pickPhrase } from '../public/js/logic/pickPhrase.js';
+import { GRUDGES, MOODS, pickPhrase } from '../public/js/logic/pickPhrase.js';
 
 const phrases = JSON.parse(readFileSync(new URL('../public/phrases.json', import.meta.url), 'utf8'));
 
 const allEntries = [
   ...Object.values(phrases.objects),
   ...Object.values(phrases.emotions),
+  ...Object.values(phrases.grudge),
   phrases.fallback,
 ];
 
@@ -33,6 +34,36 @@ test('unknown object and unknown emotion use the fallback', () => {
     assert.ok(phrases.fallback.lines.includes(text));
     assert.equal(mood, phrases.fallback.mood);
   }
+});
+
+test('person with a grudge gets a grudge line', () => {
+  for (const grudge of GRUDGES) {
+    const { text, mood } = pickPhrase(phrases, { kind: 'person', emotion: 'happy', grudge });
+    assert.ok(phrases.grudge[grudge].lines.includes(text), grudge);
+    assert.equal(mood, 'scared');
+  }
+});
+
+test('grudge without grudge phrases falls back to the emotion, then to the fallback', () => {
+  const noGrudge = { ...phrases, grudge: undefined };
+  const { text } = pickPhrase(noGrudge, { kind: 'person', emotion: 'angry', grudge: 'again' });
+  assert.ok(phrases.emotions.angry.lines.includes(text));
+  const fallback = pickPhrase(noGrudge, { kind: 'person', emotion: 'bored', grudge: 'start' });
+  assert.ok(phrases.fallback.lines.includes(fallback.text));
+});
+
+test('an unknown grudge is ignored', () => {
+  const { text } = pickPhrase(phrases, { kind: 'person', emotion: 'angry', grudge: 'constructor' });
+  assert.ok(phrases.emotions.angry.lines.includes(text));
+});
+
+test('a grudge on an object is ignored', () => {
+  const { text } = pickPhrase(phrases, { kind: 'object', label: 'cup', grudge: 'start' });
+  assert.ok(phrases.objects.cup.lines.includes(text));
+});
+
+test('both grudge lists exist and are written', () => {
+  assert.deepEqual(Object.keys(phrases.grudge).sort(), [...GRUDGES].sort());
 });
 
 test('never repeats the previous line', () => {

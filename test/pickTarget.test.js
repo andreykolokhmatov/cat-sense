@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { pickTarget } from '../public/js/logic/pickTarget.js';
+import { PERSON_MIN_SCORE, pickTarget } from '../public/js/logic/pickTarget.js';
 
 const person = { kind: 'object', label: 'person', bbox: [100, 100, 300, 600] };
 const face = { kind: 'person', emotion: 'happy', bbox: [200, 120, 100, 100] };
@@ -37,6 +37,43 @@ test('tap on the body ignores a face of someone else', () => {
 test('person without a face never becomes an object', () => {
   const target = pickTarget({ x: 250, y: 600 }, [person]);
   assert.deepEqual(target, { kind: 'person', emotion: 'neutral', bbox: person.bbox });
+});
+
+test('threshold is 0.75', () => {
+  assert.equal(PERSON_MIN_SCORE, 0.75);
+});
+
+test('weak body without a face is not a person, so the tap goes as an object', () => {
+  const figurine = { ...person, score: 0.6 };
+  assert.equal(pickTarget({ x: 250, y: 600 }, [figurine]), null);
+});
+
+test('confident body without a face stays a neutral person', () => {
+  const body = { ...person, score: 0.9 };
+  assert.deepEqual(pickTarget({ x: 250, y: 600 }, [body]), { kind: 'person', emotion: 'neutral', bbox: body.bbox });
+});
+
+test('body exactly at the threshold is a person', () => {
+  const body = { ...person, score: PERSON_MIN_SCORE };
+  assert.equal(pickTarget({ x: 250, y: 600 }, [body]).kind, 'person');
+});
+
+test('weak body with a face inside still resolves to the face', () => {
+  const weak = { ...person, score: 0.3 };
+  assert.equal(pickTarget({ x: 250, y: 600 }, [weak, face]), face);
+});
+
+test('weak body inside a confident one falls through to the confident one', () => {
+  const big = { kind: 'object', label: 'person', bbox: [0, 0, 1000, 1000], score: 0.95 };
+  const weak = { ...person, score: 0.4 };
+  assert.deepEqual(pickTarget({ x: 250, y: 600 }, [big, weak]), { kind: 'person', emotion: 'neutral', bbox: big.bbox });
+});
+
+test('face keeps its track and grudge flags', () => {
+  const tracked = { ...face, track: 'face-3', grudged: true };
+  const target = pickTarget({ x: 250, y: 150 }, [person, tracked]);
+  assert.equal(target.track, 'face-3');
+  assert.equal(target.grudged, true);
 });
 
 test('tap on the box edge counts as a hit', () => {

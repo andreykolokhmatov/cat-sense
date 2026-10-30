@@ -5,6 +5,7 @@ import { ASK_TIMEOUT_MS, askBody, askCat } from '../public/js/logic/askCat.js';
 const phrases = {
   objects: { cup: { mood: 'want', lines: ['Первая', 'Вторая'] } },
   emotions: { happy: { mood: 'happy', lines: ['Мурр'] } },
+  grudge: { start: { mood: 'scared', lines: ['Обиделся'] }, again: { mood: 'scared', lines: ['Всё ещё обижен'] } },
   fallback: { mood: 'curious', lines: ['Мяу?'] },
 };
 const cup = { kind: 'object', label: 'cup', bbox: [0, 0, 10, 10] };
@@ -22,6 +23,24 @@ function ask(fetchFn, overrides = {}) {
 test('askBody keeps only kind and emotion for a person, even with an image', () => {
   assert.deepEqual(askBody(happyPerson, 'abc'), { kind: 'person', emotion: 'happy' });
   assert.deepEqual(Object.keys(askBody(happyPerson, null)).sort(), ['emotion', 'kind']);
+});
+
+test('askBody sends a grudge only from the list', () => {
+  for (const grudge of ['start', 'again']) {
+    assert.deepEqual(askBody({ ...happyPerson, grudge }, null), { kind: 'person', emotion: 'happy', grudge });
+  }
+  for (const grudge of ['yes', 'START', true, 1, null, undefined]) {
+    assert.deepEqual(askBody({ ...happyPerson, grudge }, null), { kind: 'person', emotion: 'happy' });
+  }
+});
+
+test('askBody never sends the box, the track or the grudge flag', () => {
+  const tracked = { ...happyPerson, track: 'face-1', grudged: true, grudge: 'again' };
+  assert.deepEqual(Object.keys(askBody(tracked, 'abc')).sort(), ['emotion', 'grudge', 'kind']);
+});
+
+test('askBody drops a grudge on an object', () => {
+  assert.deepEqual(askBody({ ...cup, grudge: 'start' }, 'abc'), { kind: 'object', label: 'cup', image: 'abc' });
 });
 
 test('askBody sends an object with its image', () => {
@@ -123,6 +142,26 @@ test('object without an image answers without calling fetch', async () => {
 test('lastText reaches pickPhrase', async () => {
   const fetchFn = async () => jsonResponse({}, false);
   assert.equal((await ask(fetchFn, { lastText: 'Первая' })).text, 'Вторая');
+});
+
+test('offline grudge falls back to the grudge phrase', async () => {
+  const fetchFn = async () => {
+    throw new TypeError('offline');
+  };
+  const again = { ...happyPerson, track: 'face-1', grudged: true, grudge: 'again' };
+  assert.deepEqual(await ask(fetchFn, { target: again }), { text: 'Всё ещё обижен', mood: 'scared' });
+  const start = { ...happyPerson, grudge: 'start' };
+  assert.deepEqual(await ask(fetchFn, { target: start }), { text: 'Обиделся', mood: 'scared' });
+});
+
+test('grudge request carries the grudge and no image', async () => {
+  let body;
+  const fetchFn = async (_url, options) => {
+    body = JSON.parse(options.body);
+    return jsonResponse({ text: 'Фыр', mood: 'scared' });
+  };
+  await ask(fetchFn, { target: { ...happyPerson, track: 'face-1', grudge: 'start' }, image: 'abc' });
+  assert.deepEqual(body, { kind: 'person', emotion: 'happy', grudge: 'start' });
 });
 
 test('unknown label uses the fallback phrase', async () => {

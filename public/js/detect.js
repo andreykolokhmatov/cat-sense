@@ -1,5 +1,6 @@
 import { videoFrame } from './logic/coverMap.js';
 import { bodyDetections, faceDetections } from './logic/detections.js';
+import { createTracker } from './logic/tracker.js';
 
 const VISION_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35';
 const FACE_MODEL_URL =
@@ -16,6 +17,10 @@ let bodies = [];
 let faces = [];
 let detectionsFrame = null;
 let lastTimestamp = 0;
+// Only the loop feeds the tracker: the tap-time search in detectFacesNow runs on a single
+// frozen frame and would count as a cycle where everyone else went missing.
+const faceTracker = createTracker({ prefix: 'face-' });
+const listeners = [];
 
 function pageLoaded() {
   if (document.readyState === 'complete') return Promise.resolve();
@@ -72,21 +77,42 @@ async function updateBodies() {
   }
 }
 
+function withTracks(found) {
+  const ids = faceTracker.update(found.map(({ bbox }) => bbox));
+  return found.map((face, index) => ({ ...face, track: ids[index], grudged: faceTracker.isGrudged(ids[index]) }));
+}
+
 function updateFaces(frame) {
   if (!faceLandmarker) return;
+  let found = [];
   try {
-    faces = findFaces(video, frame);
+    found = findFaces(video, frame);
   } catch (error) {
-    faces = [];
     console.warn('Face Landmarker failed on a frame', error);
   }
+  faces = withTracks(found);
+}
+
+function notify() {
+  for (const listener of listeners) listener();
+}
+
+// After a rotation the old boxes are in another frame, after the background the people may
+// be gone: either way a grudge must not stick to whoever is there now.
+function forgetFaces() {
+  faceTracker.reset();
+  faces = faces.map((face) => ({ ...face, track: null, grudged: false }));
 }
 
 async function tick() {
   const frame = videoFrame(video);
+  if (detectionsFrame && (detectionsFrame.width !== frame.width || detectionsFrame.height !== frame.height)) {
+    forgetFaces();
+  }
   await updateBodies();
   updateFaces(frame);
   detectionsFrame = frame;
+  notify();
 }
 
 function pause(ms) {
@@ -107,6 +133,11 @@ function isCurrentFrame() {
 
 export function startDetection(videoElement) {
   video = videoElement;
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) return;
+    forgetFaces();
+    notify();
+  });
   loadCoco();
   loadFaceLandmarker();
   runLoop();
@@ -115,6 +146,20 @@ export function startDetection(videoElement) {
 // After a rotation the boxes are in the old frame: they would miss the objects and the masks.
 export function getDetections() {
   return isCurrentFrame() ? [...bodies, ...faces] : [];
+}
+
+export function onDetections(listener) {
+  listeners.push(listener);
+}
+
+export function markGrudge(trackId) {
+  faceTracker.mark(trackId);
+  faces = faces.map((face) => (face.track === trackId ? { ...face, grudged: true } : face));
+}
+
+// Tracks in video pixels of the current frame, empty right after a rotation.
+export function faceTracks() {
+  return isCurrentFrame() ? faceTracker.tracks() : [];
 }
 
 // Returns null while the model is unavailable, so the caller can refuse to build an image.

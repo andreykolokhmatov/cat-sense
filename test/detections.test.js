@@ -19,12 +19,17 @@ function assertBox(actual, expected) {
   });
 }
 
-test('bodyDetections keeps only people from COCO results', () => {
+test('bodyDetections keeps only people from COCO results, with their score', () => {
   const results = [
     { bbox: [1, 2, 3, 4], class: 'cup', score: 0.8 },
     { bbox: [5, 6, 7, 8], class: 'person', score: 0.9 },
   ];
-  assert.deepEqual(bodyDetections(results), [{ kind: 'object', label: 'person', bbox: [5, 6, 7, 8] }]);
+  assert.deepEqual(bodyDetections(results), [{ kind: 'object', label: 'person', bbox: [5, 6, 7, 8], score: 0.9 }]);
+});
+
+test('privacyMasks paints the head of a weak body too', () => {
+  const masks = privacyMasks([{ kind: 'object', label: 'person', bbox: [100, 100, 200, 400], score: 0.3 }]);
+  assert.equal(masks.length, 1);
 });
 
 test('faceBox wraps the landmarks in frame pixels', () => {

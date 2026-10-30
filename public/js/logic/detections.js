@@ -32,7 +32,7 @@ function headOf([x, y, width, height]) {
 export function bodyDetections(cocoResults) {
   return cocoResults
     .filter(({ class: label }) => label === 'person')
-    .map(({ bbox }) => ({ kind: 'object', label: 'person', bbox }));
+    .map(({ bbox, score }) => ({ kind: 'object', label: 'person', bbox, score }));
 }
 
 // Landmarks are normalized and can fall outside 0..1 when a face is cut by the frame edge.
