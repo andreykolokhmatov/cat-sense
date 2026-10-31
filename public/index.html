@@ -19,13 +19,33 @@
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; background: #111; color: #eee; font: 16px/1.4 system-ui, sans-serif; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
     [hidden] { display: none !important; }
+    /* One palette, one radius scale, one type scale (iOS: 13 caption, 15 subhead, 17 body, 22 title). */
     :root {
       --orange: #FA9A3C;
+      --accent-fill: linear-gradient(180deg, #ffb25c, var(--orange));
+      --accent-glow: 0 0 16px rgba(250, 154, 60, .45);
       --ink: #1c1c1e;
+      --night-0: #0c0714;
+      --night-1: #1b0d2c;
+      --night-2: #2c1645;
+      --surface: linear-gradient(180deg, var(--night-2) 0%, var(--night-1) 100%);
+      --text: #f3e8ff;
+      --text-2: #b9a8cc;
+      --fill: rgba(255, 255, 255, .08);
+      --fill-pressed: rgba(190, 140, 255, .22);
+      --stroke: inset 0 0 0 1.5px rgba(190, 140, 255, .35);
+      --divider: rgba(190, 140, 255, .18);
+      --r-s: 12px;
+      --r-m: 20px;
+      --r-l: 24px;
+      --fs-caption: 13px;
+      --fs-sub: 15px;
+      --fs-body: 17px;
+      --fs-title: 22px;
       --screen-h: 100vh;
       --panel-pad: 12px;
       --panel-gap: 10px;
-      --panel-radius: 22px;
+      --panel-radius: var(--r-l);
       --buttons-h: 46px;
       --panel-h: calc(var(--screen-h) * .3 + env(safe-area-inset-bottom));
       --camera-h: calc(var(--screen-h) - var(--panel-h));
@@ -51,13 +71,19 @@
     /* The panel rises over the camera by its corner radius: a sheet the cat sits on. That strip
        is the panel's, taps on it do not reach the camera, and the video mapping is unchanged. */
     #panel { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--panel-h) + var(--panel-radius)); box-sizing: border-box; display: grid; grid-template: 'bubble cat' minmax(0, 1fr) 'buttons buttons' var(--buttons-h) / minmax(0, 1fr) var(--cat-size); column-gap: 4px; row-gap: var(--panel-gap); padding: var(--panel-pad) calc(var(--panel-pad) + env(safe-area-inset-right)) calc(var(--panel-pad) + env(safe-area-inset-bottom)) calc(var(--panel-pad) + env(safe-area-inset-left)); border-radius: var(--panel-radius) var(--panel-radius) 0 0; background: var(--orange); box-shadow: 0 -8px 24px rgba(0, 0, 0, .22); }
-    .panel-buttons { grid-area: buttons; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-    .panel-buttons button { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; padding: 0 6px; border: 0; border-radius: 14px; background: rgba(255, 255, 255, .32); color: var(--ink); font: inherit; font-size: clamp(12px, 3.6vw, 14px); font-weight: 700; line-height: 1; white-space: nowrap; transition: transform .1s, background-color .2s; }
-    .panel-buttons button:active { transform: scale(.96); background: rgba(255, 255, 255, .5); }
-    .panel-buttons button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
-    .panel-buttons svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-    #save-button { background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .12); }
-    #vision-button[aria-pressed="false"] .icon-cat, #vision-button[aria-pressed="true"] .icon-human { display: none; }
+    .panel-buttons { grid-area: buttons; display: grid; grid-template-columns: var(--buttons-h) minmax(0, 1.25fr) minmax(0, 1fr); gap: 8px; }
+    .panel-buttons button { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; padding: 0 8px; border: 0; border-radius: 999px; background: var(--fill); color: var(--text); box-shadow: var(--stroke); font: inherit; font-size: clamp(12px, 3.6vw, 15px); font-weight: 700; line-height: 1; white-space: nowrap; transition: transform .1s, background-color .2s, color .2s; }
+    .panel-buttons button:active { transform: scale(.96); background: var(--fill-pressed); }
+    .panel-buttons button:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+    .panel-buttons svg { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+    #info-button { padding: 0; }
+    /* iOS segmented control: one track, the chosen half lifts out of it. */
+    .segmented { display: grid; grid-template-columns: 1fr 1fr; min-width: 0; padding: 3px; border-radius: 999px; background: var(--fill); box-shadow: var(--stroke); }
+    .panel-buttons .segmented button { padding: 0 4px; background: none; box-shadow: none; color: var(--text-2); }
+    .panel-buttons .segmented button[aria-pressed="true"] { background: rgba(255, 255, 255, .16); color: #fff; }
+    .panel-buttons .segmented button:active { transform: none; background: var(--fill-pressed); }
+    #save-button { background: var(--accent-fill); color: var(--ink); box-shadow: var(--accent-glow); }
+    #save-button:active { background: var(--orange); }
     #cat { grid-area: cat; align-self: end; position: relative; width: var(--cat-size); height: var(--cat-size); display: grid; place-items: center; font-size: calc(var(--cat-size) * .6); line-height: 1; transform-origin: 50% 100%; pointer-events: none; animation: breathe 3s ease-in-out infinite; }
     #cat img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .35)); -webkit-user-drag: none; }
     /* The closed-eyes picture lies exactly over the open one and shows for a moment. */
@@ -67,7 +93,7 @@
     /* The bubble grows with its text up to the row height; past that cat.js shrinks the font and
        the rest is cut inside .bubble-text, so the buttons never move. */
     /* Centred on the cat's head, the tail pointing at its mouth. */
-    #bubble { grid-area: bubble; position: relative; align-self: center; justify-self: end; box-sizing: border-box; display: flex; flex-direction: column; min-height: 0; max-height: 100%; padding: 10px 14px; border-radius: 18px; background: #fff; color: var(--ink); font-size: 16px; font-weight: 500; line-height: 1.3; box-shadow: 0 6px 16px rgba(0, 0, 0, .16); pointer-events: none; transform-origin: 100% 50%; }
+    #bubble { grid-area: bubble; position: relative; align-self: center; justify-self: end; box-sizing: border-box; display: flex; flex-direction: column; min-height: 0; max-height: 100%; padding: 10px 14px; border-radius: var(--r-m); background: #fff; color: var(--ink); font-size: 16px; font-weight: 500; line-height: 1.3; box-shadow: 0 6px 16px rgba(0, 0, 0, .16); pointer-events: none; transform-origin: 100% 50%; }
     #bubble::after { content: ''; position: absolute; right: -6px; top: calc(50% - 7px); width: 14px; height: 14px; background: inherit; border-radius: 0 3px 0 0; transform: rotate(45deg); }
     .bubble-text { display: -webkit-box; -webkit-box-orient: vertical; min-height: 0; overflow: hidden; overflow-wrap: anywhere; }
     #bubble:has(> .bubble-text:empty) { visibility: hidden; }
@@ -104,63 +130,63 @@
     @keyframes dot { 0%, 60%, 100% { transform: translateY(0); opacity: .4; } 30% { transform: translateY(-4px); opacity: 1; } }
     body.is-intro #overlay, body.is-intro #panel { display: none; }
     /* "Как это" is a bottom sheet: it slides up from the panel the visitor just tapped. */
-    #info { box-sizing: border-box; width: 100%; max-width: 480px; max-height: 86vh; max-height: 86dvh; margin: auto auto 0; padding: 0; border: 0; border-radius: 24px 24px 0 0; background: #fff; color: var(--ink); overflow: auto; overscroll-behavior: contain; -webkit-user-select: text; user-select: text; }
+    #info { box-sizing: border-box; width: 100%; max-width: 480px; max-height: 86vh; max-height: 86dvh; margin: auto auto 0; padding: 0; border: 0; border-radius: var(--r-l) var(--r-l) 0 0; background: var(--surface); color: var(--text); box-shadow: 0 -10px 30px rgba(0, 0, 0, .4); overflow: auto; overscroll-behavior: contain; -webkit-user-select: text; user-select: text; }
     #info[open] { animation: sheet .3s cubic-bezier(.2, .8, .2, 1); }
     @keyframes sheet { from { transform: translateY(100%); } to { transform: none; } }
-    #info::backdrop, #photo::backdrop { background: rgba(0, 0, 0, .55); }
-    #photo { box-sizing: border-box; width: min(92vw, 420px); max-height: 90vh; max-height: 90dvh; padding: 16px; border: 0; border-radius: 20px; background: #fff; color: var(--ink); overflow: auto; text-align: center; }
+    #info::backdrop, #photo::backdrop { background: rgba(12, 7, 20, .7); }
+    #photo { box-sizing: border-box; width: min(92vw, 420px); max-height: 90vh; max-height: 90dvh; padding: 16px; border: 0; border-radius: var(--r-l); background: var(--surface); color: var(--text); overflow: auto; text-align: center; }
     /* Long-press must reach the image: that is how iOS saves it when sharing is unavailable. */
-    #photo img { display: block; width: 100%; max-height: 60vh; max-height: 60dvh; object-fit: contain; border-radius: 12px; -webkit-touch-callout: default; -webkit-user-select: auto; user-select: auto; }
-    #photo p { margin: 12px 0; font-size: 15px; line-height: 1.4; }
+    #photo img { display: block; width: 100%; max-height: 60vh; max-height: 60dvh; object-fit: contain; border-radius: var(--r-s); -webkit-touch-callout: default; -webkit-user-select: auto; user-select: auto; }
+    #photo p { margin: 12px 0; font-size: var(--fs-sub); line-height: 1.4; color: var(--text-2); }
     #photo .photo-actions { display: flex; gap: 8px; }
     #photo form { flex: 1; display: flex; margin: 0; }
-    #photo a, #photo button { flex: 1; display: grid; place-items: center; min-height: 48px; border: 0; border-radius: 999px; font: inherit; font-size: 16px; font-weight: 700; text-decoration: none; }
-    #photo a { background: rgba(0, 0, 0, .08); color: var(--ink); }
-    #photo button { background: var(--orange); color: var(--ink); }
+    #photo a, #photo button { flex: 1; display: grid; place-items: center; min-height: 48px; border: 0; border-radius: 999px; font: inherit; font-size: var(--fs-body); font-weight: 700; text-decoration: none; }
+    #photo a { background: var(--fill); color: var(--text); box-shadow: var(--stroke); }
+    #photo button { background: var(--accent-fill); color: var(--ink); box-shadow: var(--accent-glow); }
     .info-body { padding: 8px 20px calc(16px + env(safe-area-inset-bottom)); }
-    .sheet-handle { width: 40px; height: 5px; margin: 0 auto 14px; border-radius: 3px; background: rgba(0, 0, 0, .15); }
+    .sheet-handle { width: 40px; height: 5px; margin: 0 auto 14px; border-radius: 3px; background: rgba(255, 255, 255, .25); }
     .info-head { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
-    .info-head img { width: 60px; height: 60px; flex: none; border-radius: 50%; background: #ffe6cc; object-fit: cover; }
-    .info-head h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.01em; outline: none; }
-    .info-head p { margin: 2px 0 0; font-size: 14px; color: #6e6e73; }
+    .info-head img { width: 60px; height: 60px; flex: none; border-radius: 50%; background: radial-gradient(circle at 50% 40%, #5b2d86, var(--night-2)); object-fit: cover; object-position: 50% 0; box-shadow: 0 0 0 2px rgba(250, 154, 60, .7); }
+    .info-head h2 { margin: 0; font-size: var(--fs-title); font-weight: 800; letter-spacing: -.01em; color: #fff; outline: none; }
+    .info-head p { margin: 2px 0 0; font-size: var(--fs-sub); color: var(--text-2); }
     .info-list { margin: 0; padding: 0; list-style: none; }
-    .info-list li { padding: 12px 0; border-top: 1px solid rgba(0, 0, 0, .07); font-size: 15px; line-height: 1.4; }
+    .info-list li { display: flex; gap: 14px; align-items: flex-start; padding: 12px 0; border-top: 1px solid var(--divider); font-size: var(--fs-sub); line-height: 1.4; color: #e6dcf5; }
     .info-list li:first-child { border-top: 0; }
-    .info-list b { font-weight: 700; }
-    .info-body form { position: sticky; bottom: 0; margin: 4px -20px 0; padding: 12px 20px 0; background: linear-gradient(rgba(255, 255, 255, 0), #fff 14px); }
-    .info-body form button { width: 100%; min-height: 50px; border: 0; border-radius: 999px; background: var(--orange); color: var(--ink); font: inherit; font-size: 17px; font-weight: 700; }
+    .info-list svg { width: 24px; height: 24px; flex: none; fill: none; stroke: #c4a5ff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .info-list b { font-weight: 700; color: #fff; }
+    .info-body form { position: sticky; bottom: 0; margin: 4px -20px 0; padding: 12px 20px 0; background: linear-gradient(rgba(27, 13, 44, 0), var(--night-1) 14px); }
+    .info-body form button { width: 100%; min-height: 50px; border: 0; border-radius: 999px; background: var(--accent-fill); color: var(--ink); box-shadow: var(--accent-glow); font: inherit; font-size: var(--fs-body); font-weight: 700; }
     #intro { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom)); background: radial-gradient(circle at 50% 45%, #2a1d14 0%, #111 70%); text-align: center; }
-    #intro h1 { margin: 0; font-size: clamp(28px, 8vw, 40px); font-weight: 800; letter-spacing: -.02em; color: #fff; }
+    #intro h1 { margin: 0 0 12px; font-size: clamp(28px, 8vw, 40px); font-weight: 800; letter-spacing: -.02em; color: #fff; }
     #intro h1 span { color: var(--orange); }
-    #intro-bubble { position: relative; max-width: min(80vw, 320px); padding: 12px 16px; border-radius: 16px; background: rgba(255, 255, 255, .95); color: #1c1c1e; font-weight: 500; line-height: 1.35; box-shadow: 0 6px 20px rgba(0, 0, 0, .25); animation: pop .3s ease-out .2s backwards; }
+    #intro-bubble { position: relative; max-width: min(80vw, 320px); padding: 12px 16px; border-radius: var(--r-m); background: rgba(255, 255, 255, .95); color: #1c1c1e; font-weight: 500; line-height: 1.35; box-shadow: 0 6px 20px rgba(0, 0, 0, .25); animation: pop .3s ease-out .2s backwards; }
     #intro-bubble::after { content: ''; position: absolute; left: 50%; bottom: -6px; width: 12px; height: 12px; margin-left: -6px; background: inherit; border-radius: 0 0 3px 0; transform: rotate(45deg); }
     #intro-cat { display: grid; width: min(60vw, 260px); margin-top: -8px; transform-origin: 50% 100%; filter: drop-shadow(0 10px 20px rgba(0, 0, 0, .45)); animation: breathe 3s ease-in-out infinite; }
     #intro-cat img { width: 100%; height: auto; -webkit-user-drag: none; }
     /* On a cold start the bubble used to talk from an empty spot while the cat was still loading. */
     #intro:not(.is-ready) #intro-bubble, #intro:not(.is-ready) #intro-cat { visibility: hidden; animation: none; }
-    #start { font: inherit; font-size: 18px; font-weight: 700; padding: 15px 32px; border: 0; border-radius: 999px; background: var(--orange); color: var(--ink); box-shadow: 0 8px 24px rgba(250, 154, 60, .35); transition: transform .1s, opacity .2s; }
+    #start { font: inherit; font-size: var(--fs-body); font-weight: 700; padding: 16px 32px; border: 0; border-radius: 999px; background: var(--accent-fill); color: var(--ink); box-shadow: var(--accent-glow); transition: transform .1s, opacity .2s; }
     #start:active { transform: scale(.96); }
     #start:disabled { opacity: .6; }
-    #intro p { margin: 0; max-width: 300px; font-size: 14px; color: #b9a8cc; }
+    #intro p { margin: 0; max-width: 300px; font-size: var(--fs-sub); color: var(--text-2); }
     /* Loading: the intro after the camera opens. The fill and the shine move by transform only,
        so the compositor keeps them going while the models hold the main thread. */
     #loading { display: none; flex-direction: column; align-items: center; gap: 10px; width: min(72vw, 280px); }
     #intro.is-loading #loading { display: flex; }
     #intro.is-loading #start, #intro.is-loading > p { display: none; }
-    .loading-track { position: relative; width: 100%; height: 14px; border-radius: 999px; overflow: hidden; background: rgba(255, 255, 255, .08); box-shadow: inset 0 0 0 1.5px rgba(190, 140, 255, .35), 0 0 16px rgba(250, 154, 60, .3); }
+    .loading-track { position: relative; width: 100%; height: 14px; border-radius: 999px; overflow: hidden; background: var(--fill); box-shadow: var(--stroke); }
     #loading-fill { position: absolute; inset: 0; background: linear-gradient(90deg, #ffb25c, var(--orange)); transform: scaleX(0); transform-origin: 0 50%; transition: transform .2s linear; }
     .loading-shine { position: absolute; top: 0; bottom: 0; left: 0; width: 40%; background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, .5), rgba(255, 255, 255, 0)); transform: translateX(-100%); animation: shine 1.4s linear infinite; will-change: transform; }
     @keyframes shine { to { transform: translateX(250%); } }
-    #loading-mb { min-height: 1.4em; font-size: 13px; color: #b9a8cc; font-variant-numeric: tabular-nums; }
+    #loading-mb { min-height: 1.4em; font-size: var(--fs-caption); color: var(--text-2); font-variant-numeric: tabular-nums; }
     /* Invisible, not removed, until it is due: the layout does not jump when it appears. */
-    #loading-skip { padding: 10px 20px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, .08); color: #f3e8ff; box-shadow: inset 0 0 0 1.5px rgba(190, 140, 255, .35); font: inherit; font-size: 15px; font-weight: 700; transition: transform .1s, background-color .2s; }
+    #loading-skip { padding: 12px 20px; border: 0; border-radius: 999px; background: var(--fill); color: var(--text); box-shadow: var(--stroke); font: inherit; font-size: var(--fs-sub); font-weight: 700; transition: transform .1s, background-color .2s; }
     #loading-skip:not(.is-shown) { visibility: hidden; }
-    #loading-skip:active { transform: scale(.96); background: rgba(190, 140, 255, .22); }
+    #loading-skip:active { transform: scale(.96); background: var(--fill-pressed); }
     #loading-skip:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
     @media (prefers-reduced-motion: reduce) { .loading-shine { animation: none; opacity: 0; } #loading-fill { transition: none; } }
     /* Halloween, kept light on the intro: a night sky and the cat in its mage costume. */
-    #intro { overflow: hidden; background: radial-gradient(ellipse at 50% 30%, #3d1f5c 0%, #1d1030 48%, #0c0714 100%); }
-    #intro h1 span { text-shadow: 0 0 18px rgba(250, 154, 60, .55); }
+    #intro { overflow: hidden; background: radial-gradient(ellipse at 50% 30%, #3d1f5c 0%, #1d1030 48%, var(--night-0) 100%); }
     .web { position: absolute; fill: none; stroke: currentColor; stroke-width: .7; stroke-linecap: round; }
     /* The thread hangs from the top edge: the spider bobs on it, the top stays out of view. */
     .spider-drop { position: absolute; top: 0; display: flex; flex-direction: column; align-items: center; animation: dangle-small 5s ease-in-out infinite; }
@@ -170,7 +196,7 @@
     /* A purple glow flickers under the flame in the mage's paw. */
     #intro-cat::after { content: ''; position: absolute; left: -4%; top: 44%; width: 34%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, rgba(190, 110, 255, .55), rgba(190, 110, 255, 0) 70%); animation: flicker 1.6s ease-in-out infinite; }
     @keyframes flicker { 0%, 100% { opacity: .55; transform: scale(1); } 40% { opacity: 1; transform: scale(1.15); } 70% { opacity: .7; transform: scale(.95); } }
-    #intro .credit { position: absolute; z-index: 2; left: 0; right: 0; bottom: calc(14px + env(safe-area-inset-bottom)); font-size: 13px; letter-spacing: .02em; color: rgba(255, 255, 255, .6); text-shadow: 0 1px 6px rgba(0, 0, 0, .8); }
+    #intro .credit { position: absolute; z-index: 2; left: 0; right: 0; bottom: calc(14px + env(safe-area-inset-bottom)); font-size: var(--fs-caption); letter-spacing: .02em; color: rgba(255, 255, 255, .6); text-shadow: 0 1px 6px rgba(0, 0, 0, .8); }
     /* The team name is also the switch of the developer mode. */
     #dev-toggle { padding: 4px 2px; border: 0; background: none; color: var(--orange); font: inherit; font-weight: 800; letter-spacing: inherit; text-shadow: inherit; }
     body.is-dev #dev-toggle::after { content: ' · DEV'; color: #4ade80; }
@@ -198,18 +224,13 @@
     .dev-load .dev-head { color: #c4a5ff; }
     /* The camera panel gets the same costume, quieter: webs in the corners, a spider, pumpkins by the cat. */
     /* Night purple like the intro: the orange cat and pumpkins stand out against it. */
-    #panel { background: radial-gradient(ellipse at 75% 20%, #4a2570 0%, rgba(74, 37, 112, 0) 60%), linear-gradient(180deg, #2c1645 0%, #1b0d2c 100%); box-shadow: 0 -10px 30px rgba(120, 60, 180, .35); }
-    .panel-buttons button { background: rgba(255, 255, 255, .08); color: #f3e8ff; box-shadow: inset 0 0 0 1.5px rgba(190, 140, 255, .35); }
-    .panel-buttons button:active { background: rgba(190, 140, 255, .22); }
-    .panel-buttons button:focus-visible { outline-color: var(--orange); }
-    #save-button { background: linear-gradient(180deg, #ffb25c, var(--orange)); color: var(--ink); box-shadow: 0 0 16px rgba(250, 154, 60, .45); }
-    #save-button:active { background: var(--orange); }
+    #panel { background: radial-gradient(ellipse at 75% 20%, #4a2570 0%, rgba(74, 37, 112, 0) 60%), var(--surface); box-shadow: 0 -8px 24px rgba(0, 0, 0, .35); }
     #panel > :not(.panel-deco) { position: relative; z-index: 1; }
     .panel-deco { position: absolute; inset: 0; z-index: 0; overflow: hidden; border-radius: inherit; pointer-events: none; }
     .panel-deco > img { position: absolute; height: auto; -webkit-user-drag: none; }
     /* Out of the grid, in the free corner above the cat's ear. */
-    #panel > #sound-button { position: absolute; z-index: 2; top: 10px; right: calc(10px + env(safe-area-inset-right)); display: grid; place-items: center; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .1); color: #f3e8ff; box-shadow: inset 0 0 0 1.5px rgba(190, 140, 255, .35); transition: transform .1s, background-color .2s; }
-    #sound-button:active { transform: scale(.92); background: rgba(190, 140, 255, .22); }
+    #panel > #sound-button { position: absolute; z-index: 2; top: 8px; right: calc(8px + env(safe-area-inset-right)); display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: var(--fill); color: var(--text); box-shadow: var(--stroke); transition: transform .1s, background-color .2s; }
+    #sound-button:active { transform: scale(.92); background: var(--fill-pressed); }
     #sound-button:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
     #sound-button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
     #sound-button[aria-pressed="true"] .icon-sound-off, #sound-button[aria-pressed="false"] .icon-sound-on { display: none; }
@@ -219,21 +240,8 @@
     #panel .drop-panel { animation-name: dangle-small; }
     @keyframes dangle-small { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-6px) rotate(4deg); } }
     .panel-deco .pumpkin-cat { right: calc(var(--panel-pad) + env(safe-area-inset-right) + var(--cat-size) * .72); bottom: calc(var(--panel-pad) + env(safe-area-inset-bottom) + var(--buttons-h) + var(--panel-gap) - 2px); width: calc(var(--cat-size) * .26); transform: rotate(-6deg); }
-    .panel-deco .pumpkin-corner { right: calc(var(--panel-pad) + env(safe-area-inset-right) - 8px); bottom: calc(var(--panel-pad) + env(safe-area-inset-bottom) + var(--buttons-h) + var(--panel-gap) - 4px); width: calc(var(--cat-size) * .2); transform: rotate(8deg); }
-    /* "Как это" in the same night costume. */
-    #info { background: linear-gradient(180deg, #2c1645 0%, #1b0d2c 100%); color: #f3e8ff; box-shadow: 0 -10px 30px rgba(120, 60, 180, .35); }
-    #info::backdrop { background: rgba(12, 7, 20, .7); }
     #info .info-body { position: relative; }
     #info .info-web { top: 0; right: 0; width: 96px; color: rgba(255, 255, 255, .18); transform: scaleX(-1); pointer-events: none; }
-    #info .sheet-handle { background: rgba(255, 255, 255, .25); }
-    #info .info-head img { background: radial-gradient(circle at 50% 40%, #5b2d86, #2c1645); object-position: 50% 0; box-shadow: 0 0 0 2px rgba(250, 154, 60, .7), 0 0 16px rgba(190, 110, 255, .45); }
-    #info .info-head h2 { color: #fff; }
-    #info .info-head h2::after { content: ' 🎃'; }
-    #info .info-head p { color: #b9a8cc; }
-    #info .info-list li { border-top-color: rgba(190, 140, 255, .18); color: #e6dcf5; }
-    #info .info-list b { color: var(--orange); }
-    #info .info-body form { background: linear-gradient(rgba(27, 13, 44, 0), #1b0d2c 14px); }
-    #info .info-body form button { background: linear-gradient(180deg, #ffb25c, var(--orange)); box-shadow: 0 0 18px rgba(250, 154, 60, .45); }
     @media (prefers-reduced-motion: reduce) { .spider-drop, #intro-cat::after { animation: none; } }
     #debug-crop { position: fixed; left: calc(8px + env(safe-area-inset-left)); top: calc(8px + env(safe-area-inset-top)); width: 120px; border: 2px solid #f5a623; pointer-events: none; }
   </style>
@@ -257,7 +265,6 @@
     <div class="panel-deco" aria-hidden="true">
       <div class="spider-drop drop-panel"><img src="/assets/halloween/spider-surprised.webp" alt=""></div>
       <img class="pumpkin-cat" src="/assets/halloween/pumpkin.webp" alt="">
-      <img class="pumpkin-corner" src="/assets/halloween/pumpkin.webp" alt="">
     </div>
     <div id="bubble" aria-live="polite"><div class="bubble-text"></div></div>
     <button id="sound-button" type="button" aria-pressed="true" aria-label="Звук кота">
@@ -265,15 +272,14 @@
       <svg class="icon-sound-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
     </button>
     <div class="panel-buttons">
-      <button id="info-button" type="button" aria-haspopup="dialog">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6M12 7.5v.01"/></svg>
-        Как это
+      <button id="info-button" type="button" aria-haspopup="dialog" aria-label="Как это работает">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 9a3.5 3.5 0 1 1 5 3.2c-1 .5-1.5 1.2-1.5 2.3v.5M12 19v.01"/></svg>
       </button>
-      <button id="vision-button" type="button" aria-pressed="true" aria-label="Кошачье зрение">
-        <svg class="icon-cat" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><path d="M12 8.5c-1 1-1 6 0 7 1-1 1-6 0-7z"/></svg>
-        <svg class="icon-human" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
-        <span id="vision-label">Кошка</span>
-      </button>
+      <!-- Two segments, not one toggle: a single label never says whether it is the mode now or the mode next. -->
+      <div class="segmented" role="group" aria-label="Зрение">
+        <button type="button" data-vision="cat" aria-pressed="true">Кошка</button>
+        <button type="button" data-vision="human" aria-pressed="false">Человек</button>
+      </div>
       <button id="save-button" type="button">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 17v3h16v-3"/></svg>
         Сохранить
@@ -313,11 +319,10 @@
         </div>
       </div>
       <ul class="info-list">
-        <li><b>Тапни</b> по предмету или человеку, и кот скажет, что он об этом думает.</li>
-        <li><b>Удержи палец</b> на человеке, и кот обидится. Обида проходит, когда человек уходит из кадра.</li>
-        <li><b>Глазами кошки.</b> Красный и зелёный для кошки почти один цвет, и мир она видит мутнее нас. Зато видит в темноте и замечает любое движение.</li>
-        <li><b>Лица не покидают телефон.</b> Эмоцию кот угадывает прямо здесь. Предмет узнаёт нейросеть по кусочку кадра, лица на нём закрашены. Если тапнуть по одежде с белым принтом на тёмном, нейросеть получит кусочек кадра с одеждой, лица на нём тоже закрашены: кот ищет там лого хакатона.</li>
-        <li><b>«Сохранить»</b> делает фото с котом и его фразой. Фото остаётся только у тебя.</li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2.5"/><circle cx="12" cy="12" r="7.5"/></svg><span><b>Тапни</b> по предмету или человеку, и кот скажет, что думает.</span></li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 10v3.5l2.5 2M9.5 3h5"/></svg><span><b>Удержи палец</b> на человеке, и кот обидится, пока тот не уйдёт из кадра.</span></li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><path d="M12 8.5c-1 1-1 6 0 7 1-1 1-6 0-7z"/></svg><span><b>Глазами кошки:</b> мир мутнее, красное почти как зелёное, зато видно в темноте.</span></li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3"/></svg><span><b>Лица остаются на телефоне.</b> Нейросеть видит только кусочек кадра с закрашенными лицами.</span></li>
       </ul>
       <form method="dialog"><button>Понятно</button></form>
     </div>
