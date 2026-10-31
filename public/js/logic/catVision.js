@@ -22,20 +22,18 @@ export function scale(m, k) {
   return m.map((row) => row.map((value) => value * k));
 }
 
-// Deuteranopia first, then less saturation and a little more light.
-export const CAT_MATRIX = scale(multiply(saturationMatrix(0.7), DEUTERANOPIA), 1.05);
+// Cat vision as drawn in the popular "people / cats" comparison: red and green fall into one
+// pale tone, almost grey, with only a bluish hint left, and the whole picture is lighter and
+// hazier. The matrix does the colours: deuteranopia first, then most of the saturation out and
+// a little more light.
+export const CAT_SATURATION = 0.4;
+export const CAT_BRIGHTNESS = 1.08;
+export const CAT_MATRIX = scale(multiply(saturationMatrix(CAT_SATURATION), DEUTERANOPIA), CAT_BRIGHTNESS);
+// A light correction on top: contrast a little flatter around a light middle and a thin pale
+// fog, so the picture reads brighter and softer. Blur and this are the whole effect.
+export const CAT_LOOK = { contrast: 0.88, fogColor: [0.82, 0.87, 1.0], fogAmount: 0.12 };
 // Cats see several times less detail than people. Blur step in CSS pixels on screen.
-export const CAT_BLUR_PX = 2;
-// Darkening at the frame edges, 0..1: a hint that the cat looks at the centre.
-export const CAT_VIGNETTE = 0.35;
-// A cat's eye gathers several times more light than ours. 0..1: how far the shadows are
-// lifted; bright parts stay as they are. Starting value, tune it on the phone in a dim room.
-export const CAT_NIGHT = 0.85;
-// Cats notice movement far better than detail. The frame is compared with one from
-// `lagMs` ago; what changed by more than `threshold` (0..1, in colour distance) glows yellow.
-// At 0.08 / 0.7 a webcam in a dim room lit up the whole outline of a person who barely moved:
-// now only clear movement glows, and softer.
-export const CAT_MOTION = { strength: 0.45, threshold: 0.16, lagMs: 150 };
+export const CAT_BLUR_PX = 3;
 
 // Edits RGBA pixels in place. Uint8ClampedArray clamps every write to 0..255; alpha is kept.
 export function applyMatrix(rgba, m) {
