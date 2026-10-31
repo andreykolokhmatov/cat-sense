@@ -2,21 +2,32 @@ import { GRUDGES, MOODS, pickPhrase } from './pickPhrase.js';
 
 export const ASK_TIMEOUT_MS = 9500;
 
-// null means there is nothing safe to send. A person never carries an image, even if one
-// was passed: only the emotion name and the grudge may leave the phone, never the box or
-// the track id.
-export function askBody(target, image) {
+// null means there is nothing safe to send. A person never carries `image`, even if one was
+// passed: only the emotion name, the grudge and a gated clothes crop (`torso`, faces painted
+// over) may leave the phone, never the box or the track id. `hero` marks a cat in the mask.
+export function askBody(target, image, { torso = null, hero = false } = {}) {
+  let body;
   if (target.kind === 'person') {
-    const body = { kind: 'person', emotion: target.emotion };
+    body = { kind: 'person', emotion: target.emotion };
     if (GRUDGES.includes(target.grudge)) body.grudge = target.grudge;
-    return body;
+    // Any grudge at all, even one not on the list: an offended cat never looks at clothes.
+    else if (target.grudge == null && typeof torso === 'string' && torso) body.torso = torso;
+  } else {
+    if (!image) return null;
+    body = { kind: 'object', label: target.label, image };
   }
-  if (!image) return null;
-  return { kind: 'object', label: target.label, image };
+  if (hero === true) body.hero = true;
+  return body;
 }
 
 function isValidReply(reply) {
   return typeof reply?.text === 'string' && reply.text.trim() !== '' && MOODS.includes(reply.mood);
+}
+
+function cleanReply(reply) {
+  const clean = { text: reply.text, mood: reply.mood };
+  if (reply.hero === true) clean.hero = true;
+  return clean;
 }
 
 async function requestReply(body, fetchFn, signal) {
@@ -28,13 +39,16 @@ async function requestReply(body, fetchFn, signal) {
   });
   if (!response.ok) return null;
   const reply = await response.json();
-  return isValidReply(reply) ? { text: reply.text, mood: reply.mood } : null;
+  return isValidReply(reply) ? cleanReply(reply) : null;
 }
 
-// Resolves to { text, mood } and never rejects: any failure falls back to a local phrase.
+// Resolves to { text, mood, hero? } and never rejects: any failure falls back to a local
+// phrase, which never puts the mask on.
 export async function askCat({
   target,
   image,
+  torso = null,
+  hero = false,
   phrases,
   lastText = null,
   fetchFn = fetch,
@@ -42,7 +56,7 @@ export async function askCat({
   random = Math.random,
 }) {
   const fallback = () => pickPhrase(phrases, target, lastText, random);
-  const body = askBody(target, image);
+  const body = askBody(target, image, { torso, hero });
   if (!body) return fallback();
 
   const controller = new AbortController();

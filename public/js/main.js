@@ -8,11 +8,12 @@ import { askCat } from './logic/askCat.js';
 import { screenToVideo, videoFrame } from './logic/coverMap.js';
 import { tapBox } from './logic/cropRegion.js';
 import { grudgeMarks } from './logic/grudgeMarks.js';
+import { HERO_OFF, heroStep, isMasked } from './logic/heroMask.js';
 import { pickTarget } from './logic/pickTarget.js';
 import { drawMarks } from './marks.js';
 import { startPreload, takePreloaded } from './preload.js';
 import { saveFrame } from './saveFrame.js';
-import { snapshot } from './snapshot.js';
+import { snapshot, torsoSnapshot } from './snapshot.js';
 import { startWarmup } from './warmup.js';
 
 // A fallback phrase comes back instantly; without a pause the dots would only flicker. A real
@@ -46,6 +47,8 @@ let busy = false;
 let catView = null;
 let press = null;
 let loading = false;
+let hero = HERO_OFF;
+let heroTimer;
 
 async function loadPhrases() {
   try {
@@ -91,24 +94,50 @@ function targetAt(tap) {
   return pickTarget(tap, getDetections()) ?? { kind: 'object', label: 'unknown', bbox: tapBox(tap) };
 }
 
+// The hero mask is a body class plus two document events, so the cat's look and animation
+// can follow it without main.js knowing how the mask is drawn.
+function heroEvent(event, text) {
+  const wasOn = hero.on;
+  hero = heroStep(hero, event);
+  clearTimeout(heroTimer);
+  if (hero.on) {
+    heroTimer = setTimeout(() => heroEvent({ type: 'tick', now: performance.now() }), Math.max(0, hero.until - performance.now()));
+  }
+  document.body.classList.toggle('is-hero', hero.on);
+  if (event.type === 'hero') document.dispatchEvent(new CustomEvent('cat:hero', { detail: { text } }));
+  else if (wasOn && !hero.on) document.dispatchEvent(new CustomEvent('cat:hero-off'));
+}
+
+// An offended cat never looks at clothes, so a grudge never cuts a torso crop.
+function wantsTorso(target) {
+  return target.kind === 'person' && target.grudge == null && Boolean(target.torsoBox);
+}
+
 async function respond(target, point) {
   busy = true;
   const tappedAt = performance.now();
+  // Taken before this tap is counted: every answer while the mask is on is asked in the mask.
+  const masked = isMasked(hero, tappedAt);
   lookAt(point.x, point.y);
   think();
   const image = target.kind === 'object' ? snapshot(video, target) : null;
+  const torsoShot = wantsTorso(target) ? torsoSnapshot(video, target.torsoBox) : null;
+  const torso = torsoShot?.image ?? null;
   const snapMs = performance.now() - tappedAt;
-  if (debug && image) showDebugCrop(image);
-  const devEntry = logAsk(target, image);
+  const crop = image ?? torso;
+  if (debug && crop) showDebugCrop(crop);
+  const devEntry = logAsk(target, crop, torsoShot, masked);
   redrawDev();
 
-  const ask = askCat({ target, image, phrases, lastText, ...(devEntry && { fetchFn: trackedFetch(devEntry) }) });
-  const [{ text, mood }] = await Promise.all([ask, pause(MIN_THINK_MS)]);
-  logReply(devEntry, { text, mood }, { snapMs: image ? snapMs : undefined, totalMs: performance.now() - tappedAt });
+  const ask = askCat({ target, image, torso, hero: masked, phrases, lastText, ...(devEntry && { fetchFn: trackedFetch(devEntry) }) });
+  const [{ text, mood, hero: isHero }] = await Promise.all([ask, pause(MIN_THINK_MS)]);
+  const cut = image || torsoShot;
+  logReply(devEntry, { text, mood }, { snapMs: cut ? snapMs : undefined, totalMs: performance.now() - tappedAt });
   // The model picks a mood by the words; an offended cat must look offended whatever it said.
   say(text, target.grudge ? 'grudge' : mood);
   playMeow();
   lastText = text;
+  heroEvent({ type: isHero ? 'hero' : 'tap', now: performance.now() }, text);
   busy = false;
 }
 
