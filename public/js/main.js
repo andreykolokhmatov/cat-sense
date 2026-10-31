@@ -1,6 +1,6 @@
 import { startCamera } from './camera.js';
 import { startCatView } from './catView.js';
-import { currentLine, lookAt, playMeow, say, think, unlockAudio } from './cat.js';
+import { currentLine, isMuted, lookAt, playMeow, say, setMuted, think, unlockAudio } from './cat.js';
 import { detectStats, faceTracks, getDetections, markGrudge, modelStatus, onDetections, startDetection } from './detect.js';
 import { drawDevBoxes, initDevMode, isDev, logAsk, logLoad, logReply, trackedFetch } from './devMode.js';
 import { runLoading } from './loadingScreen.js';
@@ -134,8 +134,9 @@ async function respond(target, point) {
   const cut = image || torsoShot;
   logReply(devEntry, { text, mood }, { snapMs: cut ? snapMs : undefined, totalMs: performance.now() - tappedAt });
   // The model picks a mood by the words; an offended cat must look offended whatever it said.
-  say(text, target.grudge ? 'grudge' : mood);
-  playMeow();
+  const shownMood = target.grudge ? 'grudge' : mood;
+  say(text, shownMood);
+  playMeow(shownMood);
   lastText = text;
   heroEvent({ type: isHero ? 'hero' : 'tap', now: performance.now() }, text);
   busy = false;
@@ -248,6 +249,13 @@ function setUpPanel() {
   // ?catcss forces the plain CSS filter, to compare with the WebGL one on a phone.
   if (params.has('catcss')) useCssCatVision();
   visionButton.addEventListener('click', () => setCatMode(!document.body.classList.contains('is-cat')));
+  const soundButton = document.getElementById('sound-button');
+  const showSound = () => soundButton.setAttribute('aria-pressed', String(!isMuted()));
+  showSound();
+  soundButton.addEventListener('click', () => {
+    setMuted(!isMuted());
+    showSound();
+  });
   document.getElementById('save-button').addEventListener('click', handleSave);
   document.getElementById('info-button').addEventListener('click', () => {
     infoDialog.showModal();
@@ -282,6 +290,7 @@ async function handleStart() {
   intro.hidden = true;
   document.body.classList.remove('is-intro');
   say('Мяу! Тапни по чему-нибудь.', 'happy');
+  playMeow('greet');
   listenToTaps();
   onDetections(redrawMarks);
   onDetections(redrawDev);

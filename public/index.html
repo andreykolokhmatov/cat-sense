@@ -203,11 +203,12 @@
     #panel > :not(.panel-deco) { position: relative; z-index: 1; }
     .panel-deco { position: absolute; inset: 0; z-index: 0; overflow: hidden; border-radius: inherit; pointer-events: none; }
     .panel-deco > img { position: absolute; height: auto; -webkit-user-drag: none; }
-    .panel-deco .web { width: 74px; color: rgba(255, 255, 255, .22); }
-    .panel-deco .web-tl { top: 0; left: 0; }
-    .panel-deco .web-tr { top: 0; right: 0; transform: scaleX(-1); }
-    .panel-deco .web-bl { bottom: 0; left: 0; width: 52px; transform: scaleY(-1); }
-    .panel-deco .web-br { bottom: 0; right: 0; width: 52px; transform: scale(-1, -1); }
+    /* Out of the grid, in the free corner above the cat's ear. */
+    #panel > #sound-button { position: absolute; z-index: 2; top: 10px; right: calc(10px + env(safe-area-inset-right)); display: grid; place-items: center; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .1); color: #f3e8ff; box-shadow: inset 0 0 0 1.5px rgba(190, 140, 255, .35); transition: transform .1s, background-color .2s; }
+    #sound-button:active { transform: scale(.92); background: rgba(190, 140, 255, .22); }
+    #sound-button:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+    #sound-button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+    #sound-button[aria-pressed="true"] .icon-sound-off, #sound-button[aria-pressed="false"] .icon-sound-on { display: none; }
     /* The thread is longer than the bob, so the spider never reaches the clipped top edge. */
     #panel .drop-panel { --thread: 30px; --size: 30px; left: 40px; }
     #panel .drop-panel::before { background: rgba(255, 255, 255, .45); }
@@ -250,15 +251,15 @@
   </section>
   <div id="panel">
     <div class="panel-deco" aria-hidden="true">
-      <svg class="web web-tl" viewBox="0 0 100 100"><use href="#web"/></svg>
-      <svg class="web web-tr" viewBox="0 0 100 100"><use href="#web"/></svg>
-      <svg class="web web-bl" viewBox="0 0 100 100"><use href="#web"/></svg>
-      <svg class="web web-br" viewBox="0 0 100 100"><use href="#web"/></svg>
       <div class="spider-drop drop-panel"><img src="/assets/halloween/spider-surprised.webp" alt=""></div>
       <img class="pumpkin-cat" src="/assets/halloween/pumpkin.webp" alt="">
       <img class="pumpkin-corner" src="/assets/halloween/pumpkin.webp" alt="">
     </div>
     <div id="bubble" aria-live="polite"><div class="bubble-text"></div></div>
+    <button id="sound-button" type="button" aria-pressed="true" aria-label="Звук кота">
+      <svg class="icon-sound-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>
+      <svg class="icon-sound-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+    </button>
     <div class="panel-buttons">
       <button id="info-button" type="button" aria-haspopup="dialog">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6M12 7.5v.01"/></svg>
