@@ -1,7 +1,8 @@
 import { startCamera } from './camera.js';
 import { startCatView } from './catView.js';
 import { currentLine, lookAt, playMeow, say, think, unlockAudio } from './cat.js';
-import { faceTracks, getDetections, markGrudge, onDetections, startDetection } from './detect.js';
+import { faceTracks, getDetections, markGrudge, modelStatus, onDetections, startDetection } from './detect.js';
+import { drawDevBoxes, initDevMode, isDev, logAsk, logReply, trackedFetch } from './devMode.js';
 import { askCat } from './logic/askCat.js';
 import { screenToVideo, videoFrame } from './logic/coverMap.js';
 import { tapBox } from './logic/cropRegion.js';
@@ -69,6 +70,12 @@ function redrawMarks() {
   drawMarks(overlay, grudgeMarks(faceTracks(), { width, height }, videoFrame(video)));
 }
 
+function redrawDev() {
+  if (!isDev()) return;
+  const { width, height } = video.getBoundingClientRect();
+  drawDevBoxes(getDetections(), modelStatus(), { width, height }, videoFrame(video));
+}
+
 function showDebugCrop(image) {
   debugCrop.src = `data:image/jpeg;base64,${image}`;
   debugCrop.hidden = false;
@@ -84,8 +91,12 @@ async function respond(target, point) {
   think();
   const image = target.kind === 'object' ? snapshot(video, target) : null;
   if (debug && image) showDebugCrop(image);
+  const devEntry = logAsk(target, image);
+  redrawDev();
 
-  const [{ text, mood }] = await Promise.all([askCat({ target, image, phrases, lastText }), pause(MIN_THINK_MS)]);
+  const ask = askCat({ target, image, phrases, lastText, ...(devEntry && { fetchFn: trackedFetch(devEntry) }) });
+  const [{ text, mood }] = await Promise.all([ask, pause(MIN_THINK_MS)]);
+  logReply(devEntry, { text, mood });
   // The model picks a mood by the words; an offended cat must look offended whatever it said.
   say(text, target.grudge ? 'grudge' : mood);
   playMeow();
@@ -230,9 +241,11 @@ async function handleStart() {
   }
   listenToTaps();
   onDetections(redrawMarks);
+  onDetections(redrawDev);
   window.addEventListener('resize', redrawMarks);
 }
 
+initDevMode();
 showIntro();
 loadPhrases();
 setUpPanel();

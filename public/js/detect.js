@@ -162,6 +162,11 @@ export function faceTracks() {
   return isCurrentFrame() ? faceTracker.tracks() : [];
 }
 
+// For the developer mode: which models are loaded.
+export function modelStatus() {
+  return { coco: Boolean(cocoModel), faces: Boolean(faceLandmarker) };
+}
+
 // Returns null while the model is unavailable, so the caller can refuse to build an image.
 export function detectFacesNow(canvas) {
   if (!faceLandmarker) return null;

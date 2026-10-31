@@ -148,7 +148,28 @@
     #intro-cat::after { content: ''; position: absolute; left: -4%; top: 44%; width: 34%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, rgba(190, 110, 255, .55), rgba(190, 110, 255, 0) 70%); animation: flicker 1.6s ease-in-out infinite; }
     @keyframes flicker { 0%, 100% { opacity: .55; transform: scale(1); } 40% { opacity: 1; transform: scale(1.15); } 70% { opacity: .7; transform: scale(.95); } }
     #intro .credit { position: absolute; z-index: 2; left: 0; right: 0; bottom: calc(14px + env(safe-area-inset-bottom)); font-size: 13px; letter-spacing: .02em; color: rgba(255, 255, 255, .6); text-shadow: 0 1px 6px rgba(0, 0, 0, .8); }
-    #intro .credit b { color: var(--orange); font-weight: 800; }
+    /* The team name is also the switch of the developer mode. */
+    #dev-toggle { padding: 4px 2px; border: 0; background: none; color: var(--orange); font: inherit; font-weight: 800; letter-spacing: inherit; text-shadow: inherit; }
+    body.is-dev #dev-toggle::after { content: ' · DEV'; color: #4ade80; }
+    #dev-boxes { position: fixed; top: 0; left: 0; z-index: 2; width: 100%; height: var(--camera-h); pointer-events: none; }
+    body.is-intro #dev-boxes, body.is-intro #dev-panel { display: none; }
+    /* Low on the camera: faces, where the boxes matter most, are usually in the upper half. */
+    #dev-panel { position: fixed; z-index: 20; bottom: calc(var(--panel-h) + var(--panel-radius) + 8px); left: calc(8px + env(safe-area-inset-left)); right: calc(8px + env(safe-area-inset-right)); display: flex; flex-direction: column; max-height: calc(var(--camera-h) * .38); border-radius: 14px; background: rgba(12, 7, 20, .84); color: #e6dcf5; font: 12px/1.35 system-ui, sans-serif; box-shadow: 0 6px 20px rgba(0, 0, 0, .4); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); -webkit-user-select: text; user-select: text; }
+    #dev-panel.is-collapsed #dev-log { display: none; }
+    .dev-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 10px; border-bottom: 1px solid rgba(190, 140, 255, .2); }
+    .dev-bar b { flex: 1; color: #4ade80; }
+    #dev-status { order: 1; flex-basis: 100%; color: #b9a8cc; }
+    .dev-bar button { padding: 4px 8px; border: 0; border-radius: 8px; background: rgba(255, 255, 255, .1); color: inherit; font: inherit; }
+    #dev-log { overflow-y: auto; padding: 6px 10px 10px; overscroll-behavior: contain; }
+    .dev-row { margin-top: 6px; padding: 6px 8px; border-radius: 10px; }
+    .dev-head { margin-bottom: 2px; font-weight: 700; font-size: 11px; }
+    .dev-you { background: rgba(255, 255, 255, .06); }
+    .dev-you .dev-head { color: #facc15; }
+    .dev-you img { display: block; max-width: 110px; max-height: 110px; margin-top: 6px; border-radius: 6px; }
+    .dev-gemini { background: rgba(74, 222, 128, .12); }
+    .dev-gemini .dev-head { color: #4ade80; }
+    .dev-fallback { background: rgba(251, 146, 60, .14); }
+    .dev-fallback .dev-head { color: #fb923c; }
     /* The camera panel gets the same costume, quieter: webs in the corners, a spider, pumpkins by the cat. */
     /* Night purple like the intro: the orange cat and pumpkins stand out against it. */
     #panel { background: radial-gradient(ellipse at 75% 20%, #4a2570 0%, rgba(74, 37, 112, 0) 60%), linear-gradient(180deg, #2c1645 0%, #1b0d2c 100%); box-shadow: 0 -10px 30px rgba(120, 60, 180, .35); }
@@ -194,6 +215,17 @@
   <canvas id="catview"></canvas>
   <video id="video" playsinline muted autoplay></video>
   <canvas id="overlay"></canvas>
+  <canvas id="dev-boxes" hidden></canvas>
+  <section id="dev-panel" hidden aria-label="Режим разработчика">
+    <div class="dev-bar">
+      <b>DEV</b>
+      <span id="dev-status">Камера ещё не включена</span>
+      <button id="dev-clear" type="button">очистить</button>
+      <button id="dev-collapse" type="button">свернуть</button>
+      <button id="dev-off" type="button">выкл</button>
+    </div>
+    <div id="dev-log" aria-live="polite"></div>
+  </section>
   <div id="panel">
     <div class="panel-deco" aria-hidden="true">
       <svg class="web web-tl" viewBox="0 0 100 100"><use href="#web"/></svg>
@@ -231,7 +263,7 @@
     <div id="intro-cat"><img id="intro-img" src="/assets/halloween/cat-mage.webp" alt="Рыжий кот в костюме мага" draggable="false" fetchpriority="high"></div>
     <button id="start">Включить камеру</button>
     <p>Тапни по предмету или человеку, и кот скажет, что думает.</p>
-    <footer class="credit">Сделано командой <b>BugBusters</b></footer>
+    <footer class="credit">Сделано командой <button id="dev-toggle" type="button" aria-label="BugBusters, режим разработчика">BugBusters</button></footer>
   </section>
   <dialog id="info" aria-labelledby="info-title">
     <div class="info-body">
