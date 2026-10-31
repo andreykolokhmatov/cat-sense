@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { askOutcome, describeTarget, formatSeconds, perfLine } from '../public/js/logic/devLog.js';
+import { askOutcome, describeTarget, formatSeconds, perfLine, phasesLine } from '../public/js/logic/devLog.js';
 
 const reply = { text: 'Хочу воды!', mood: 'want' };
 
@@ -58,6 +58,19 @@ test('perfLine shows dashes before the first measurements and "выкл" without
   assert.equal(perfLine({ cat: { fps: null, level: 0 } }), 'зрение — (полное) · тик — · COCO —');
   assert.equal(perfLine({ cat: null }), 'зрение выкл · тик — · COCO —');
   assert.equal(perfLine(), 'зрение выкл · тик — · COCO —');
+});
+
+test('phasesLine shows the crop, the request and the whole way to the text', () => {
+  assert.equal(
+    phasesLine({ snapMs: 120, askMs: 1380, totalMs: 1680 }),
+    'вырезка 0.1 с · запрос 1.4 с · от тапа до текста 1.7 с',
+  );
+});
+
+test('phasesLine skips what was not measured', () => {
+  assert.equal(phasesLine({ totalMs: 800 }), 'от тапа до текста 0.8 с');
+  assert.equal(phasesLine({ askMs: undefined }), '');
+  assert.equal(phasesLine(), '');
 });
 
 test('formatSeconds keeps one decimal', () => {

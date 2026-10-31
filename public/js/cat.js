@@ -12,8 +12,8 @@ const LEAN_MS = 3500;
 const BLINK_MS = 150;
 const BLINK_GAP_MS = { min: 2500, max: 6000 };
 // Long replies type faster so the whole line never takes more than TYPE_MAX_MS.
-const TYPE_CHAR_MS = 25;
-const TYPE_MAX_MS = 900;
+const TYPE_CHAR_MS = 18;
+const TYPE_MAX_MS = 550;
 // Each size is one reflow, so the list stays short; 13px still fits about 12 words on a 375px phone.
 const BUBBLE_FONT_PX = [16, 14, 13, 12];
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;

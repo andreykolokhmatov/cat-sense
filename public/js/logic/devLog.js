@@ -53,6 +53,16 @@ export function formatSeconds(ms) {
   return `${(ms / 1000).toFixed(1)} с`;
 }
 
+// Where the time of one tap went: cutting the crop on the phone, the round trip to the model,
+// and the whole way from the finger to the text in the bubble. A missing figure is skipped.
+export function phasesLine({ snapMs, askMs, totalMs } = {}) {
+  const parts = [];
+  if (typeof snapMs === 'number') parts.push(`вырезка ${formatSeconds(snapMs)}`);
+  if (typeof askMs === 'number') parts.push(`запрос ${formatSeconds(askMs)}`);
+  if (typeof totalMs === 'number') parts.push(`от тапа до текста ${formatSeconds(totalMs)}`);
+  return parts.join(' · ');
+}
+
 const dash = (value, format) => (typeof value === 'number' ? format(value) : '—');
 
 // One line of speed figures for the status bar: how smooth the cat view runs, at which quality

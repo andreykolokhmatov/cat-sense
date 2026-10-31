@@ -50,7 +50,9 @@
 
 Подходят Linux и Windows. Нужны Node.js 22 или новее и Claude Code, на Windows ещё Git for Windows. `jq` и другие утилиты не требуются.
 
-Локальный запуск с функциями и деплой: `npx vercel dev` и `npx vercel deploy`. Ключ Gemini кладём в `.env` как `GEMINI_API_KEY`.
+Локальный запуск без входа в Vercel: `npm run dev`, сайт откроется на `http://localhost:5173/` вместе с `/api/ask` и `/api/ping`. Ключ Gemini кладём в `.env` как `GEMINI_API_KEY` (скопировать из `.env.example`); без ключа кот говорит запасные фразы. Камера работает на `localhost`, а по адресу в Wi-Fi нет: нужен HTTPS.
+
+Запуск через Vercel и деплой: `npx vercel dev` и `npx vercel deploy`.
 
 ## Лицензии
 
