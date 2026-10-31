@@ -77,15 +77,8 @@ async function updateBodies() {
   }
 }
 
-// The tracker follows boxes only, so the contour that goes with a track is kept here. A track
-// that skipped a cycle keeps its last contour, the same way it keeps its last box.
-const outlines = new Map();
-
 function withTracks(found) {
   const ids = faceTracker.update(found.map(({ bbox }) => bbox));
-  found.forEach(({ outline }, index) => outlines.set(ids[index], outline));
-  const alive = new Set(faceTracker.tracks().map(({ id }) => id));
-  for (const id of outlines.keys()) if (!alive.has(id)) outlines.delete(id);
   return found.map((face, index) => ({ ...face, track: ids[index], grudged: faceTracker.isGrudged(ids[index]) }));
 }
 
@@ -108,7 +101,6 @@ function notify() {
 // be gone: either way a grudge must not stick to whoever is there now.
 function forgetFaces() {
   faceTracker.reset();
-  outlines.clear();
   faces = faces.map((face) => ({ ...face, track: null, grudged: false }));
 }
 
@@ -167,7 +159,7 @@ export function markGrudge(trackId) {
 
 // Tracks in video pixels of the current frame, empty right after a rotation.
 export function faceTracks() {
-  return isCurrentFrame() ? faceTracker.tracks().map((track) => ({ ...track, outline: outlines.get(track.id) ?? null })) : [];
+  return isCurrentFrame() ? faceTracker.tracks() : [];
 }
 
 // Returns null while the model is unavailable, so the caller can refuse to build an image.

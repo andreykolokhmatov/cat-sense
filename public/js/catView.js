@@ -1,4 +1,4 @@
-import { CAT_BLUR_PX, CAT_MATRIX, CAT_VIGNETTE } from './logic/catVision.js';
+import { CAT_BLUR_PX, CAT_MATRIX, CAT_MOTION, CAT_NIGHT, CAT_VIGNETTE } from './logic/catVision.js';
 import { videoFrame, visibleSource } from './logic/coverMap.js';
 
 // The live filter is drawn with WebGL because WebKit on iPhone ignores an SVG filter on
@@ -6,6 +6,8 @@ import { videoFrame, visibleSource } from './logic/coverMap.js';
 const MAX_PIXEL_RATIO = 2;
 const HAVE_CURRENT_DATA = 2;
 const PLAY_RETRY_MS = 1000;
+// A reference older than this is from before a pause, and comparing with it would glow everywhere.
+const STALE_REFERENCE_MS = 1000;
 
 const VERTEX = `
 attribute vec2 position;
@@ -18,23 +20,50 @@ void main() {
   gl_Position = vec4(position, 0.0, 1.0);
 }`;
 
-// A 3x3 Gaussian at a distance of `texel`, then the colour matrix, then a soft vignette.
+// A 3x3 Gaussian at a distance of `texel`, the colour matrix, shadows lifted for night vision,
+// a yellow glow where the picture moved, then a soft vignette.
 const FRAGMENT = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 uniform sampler2D frame;
+uniform sampler2D previous;
 uniform mat3 matrix;
 uniform vec2 texel;
 uniform float vignette;
+uniform float night;
+uniform float motion;
+uniform float threshold;
+uniform vec2 seed;
 varying vec2 uv;
 varying vec2 unit;
-vec3 at(vec2 offset) { return texture2D(frame, uv + offset * texel).rgb; }
+vec3 blur3(sampler2D image) {
+  return (texture2D(image, uv).rgb * 4.0
+    + (texture2D(image, uv + vec2(texel.x, 0.0)).rgb + texture2D(image, uv - vec2(texel.x, 0.0)).rgb
+      + texture2D(image, uv + vec2(0.0, texel.y)).rgb + texture2D(image, uv - vec2(0.0, texel.y)).rgb) * 2.0
+    + texture2D(image, uv + texel).rgb + texture2D(image, uv - texel).rgb
+    + texture2D(image, uv + vec2(texel.x, -texel.y)).rgb + texture2D(image, uv + vec2(-texel.x, texel.y)).rgb) / 16.0;
+}
+float noise(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 void main() {
-  vec3 color = at(vec2(0.0)) * 4.0
-    + (at(vec2(1.0, 0.0)) + at(vec2(-1.0, 0.0)) + at(vec2(0.0, 1.0)) + at(vec2(0.0, -1.0))) * 2.0
-    + at(vec2(1.0, 1.0)) + at(vec2(-1.0, -1.0)) + at(vec2(1.0, -1.0)) + at(vec2(-1.0, 1.0));
-  color = clamp(matrix * (color / 16.0), 0.0, 1.0);
+  vec3 now = blur3(frame);
+  vec3 color = clamp(matrix * now, 0.0, 1.0);
+
+  // Shadows only: a gamma curve blended in by how dark the pixel is, with grain like a dim
+  // room on a camera, so a lifted shadow does not look flat.
+  float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
+  float dark = night * (1.0 - smoothstep(0.15, 0.7, luma));
+  color = mix(color, pow(color, vec3(0.55)), dark);
+  color += (noise(unit * vec2(521.0, 613.0) + seed * 100.0) - 0.5) * 0.07 * dark;
+
+  float change = distance(now, blur3(previous));
+  float moved = motion * smoothstep(threshold, threshold + 0.18, change);
+  color = mix(color, vec3(1.0, 0.88, 0.4), moved * 0.7);
+
   color *= 1.0 - vignette * smoothstep(0.35, 0.75, distance(unit, vec2(0.5)));
-  gl_FragColor = vec4(color, 1.0);
+  gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
 }`;
 
 function compile(gl, type, source) {
@@ -64,18 +93,31 @@ function setUp(gl) {
   gl.enableVertexAttribArray(position);
   gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
 
-  // A camera frame is not a power of two: WebGL 1 then needs clamping and no mipmaps.
-  gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  // Unit 0 holds the current frame, unit 1 the one from a moment ago, for the motion glow.
+  const textures = [gl.TEXTURE0, gl.TEXTURE1].map((unit) => {
+    gl.activeTexture(unit);
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    // A camera frame is not a power of two: WebGL 1 then needs clamping and no mipmaps.
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    return texture;
+  });
+  gl.uniform1i(gl.getUniformLocation(program, 'frame'), 0);
+  gl.uniform1i(gl.getUniformLocation(program, 'previous'), 1);
 
   gl.uniformMatrix3fv(gl.getUniformLocation(program, 'matrix'), false, columns(CAT_MATRIX));
   gl.uniform1f(gl.getUniformLocation(program, 'vignette'), CAT_VIGNETTE);
+  gl.uniform1f(gl.getUniformLocation(program, 'night'), CAT_NIGHT);
+  gl.uniform1f(gl.getUniformLocation(program, 'motion'), CAT_MOTION.strength);
+  gl.uniform1f(gl.getUniformLocation(program, 'threshold'), CAT_MOTION.threshold);
   return {
     source: gl.getUniformLocation(program, 'source'),
     texel: gl.getUniformLocation(program, 'texel'),
+    seed: gl.getUniformLocation(program, 'seed'),
+    textures,
   };
 }
 
@@ -117,10 +159,24 @@ export function startCatView(canvas, video, { isOn, onFail }) {
   canvas.addEventListener('webglcontextrestored', () => {
     try {
       uniforms = setUp(gl);
+      hasReference = false;
     } catch (error) {
       fail(error);
     }
   });
+
+  // The picture the motion glow compares against, refreshed every CAT_MOTION.lagMs. Without
+  // one (first frame, after the app was in the background) the current frame stands in, so
+  // the whole picture does not flash as "moved".
+  let referenceAt = -Infinity;
+  let hasReference = false;
+  function uploadReference(now) {
+    gl.activeTexture(gl.TEXTURE1);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, video);
+    gl.activeTexture(gl.TEXTURE0);
+    referenceAt = now;
+    hasReference = true;
+  }
 
   // Returns true when the canvas holds the current frame.
   function render() {
@@ -132,12 +188,18 @@ export function startCatView(canvas, video, { isOn, onFail }) {
     try {
       fitCanvas(canvas, rect);
       gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.activeTexture(gl.TEXTURE0);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, video);
+      const now = performance.now();
+      if (!hasReference || now - referenceAt > STALE_REFERENCE_MS) uploadReference(now);
+      gl.uniform2f(uniforms.seed, Math.random(), Math.random());
       gl.uniform4f(uniforms.source, source.sx / frame.width, source.sy / frame.height, source.sw / frame.width, source.sh / frame.height);
       // One CSS pixel on screen covers sw / rect.width video pixels.
       const step = (CAT_BLUR_PX * source.sw) / rect.width;
       gl.uniform2f(uniforms.texel, step / frame.width, step / frame.height);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      // After the draw: this frame becomes the reference only for the frames that follow.
+      if (now - referenceAt >= CAT_MOTION.lagMs) uploadReference(now);
       return true;
     } catch (error) {
       fail(error);

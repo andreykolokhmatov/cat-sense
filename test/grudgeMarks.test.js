@@ -22,29 +22,6 @@ test('a grudged face gets a mark centred above it in screen pixels', () => {
   close(mark.size, size);
 });
 
-test('a mark carries the screen box of the face for the red tint', () => {
-  const [mark] = grudgeMarks([{ bbox: [600, 300, 96, 120], grudged: true }], view, frame);
-  close(mark.face.x, 600 * scale + offsetX);
-  close(mark.face.y, 300 * scale);
-  close(mark.face.width, 96 * scale);
-  close(mark.face.height, 120 * scale);
-});
-
-test('the contour of a grudged face is mapped to screen points', () => {
-  const outline = [[600, 300], [696, 300], [648, 420]];
-  const [mark] = grudgeMarks([{ bbox: [600, 300, 96, 120], grudged: true, outline }], view, frame);
-  assert.equal(mark.outline.length, 3);
-  close(mark.outline[0][0], 600 * scale + offsetX);
-  close(mark.outline[0][1], 300 * scale);
-  close(mark.outline[2][0], 648 * scale + offsetX);
-  close(mark.outline[2][1], 420 * scale);
-});
-
-test('a face without a contour keeps outline null', () => {
-  const [mark] = grudgeMarks([{ bbox: [600, 300, 96, 120], grudged: true }], view, frame);
-  assert.equal(mark.outline, null);
-});
-
 test('mark size is clamped to 28..80', () => {
   const small = grudgeMarks([{ bbox: [600, 300, 10, 10], grudged: true }], view, frame)[0];
   const big = grudgeMarks([{ bbox: [400, 300, 600, 400], grudged: true }], view, frame)[0];

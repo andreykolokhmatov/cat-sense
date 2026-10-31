@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { bodyDetections, faceBox, faceDetections, faceOutline, privacyMasks } from '../public/js/logic/detections.js';
+import { bodyDetections, faceBox, faceDetections, privacyMasks } from '../public/js/logic/detections.js';
 
 const frame = { width: 1000, height: 500 };
 const smile = [
@@ -40,35 +40,6 @@ test('faceBox wraps the landmarks in frame pixels', () => {
 test('faceBox clamps points outside the frame', () => {
   const landmarks = [{ x: -0.5, y: 0.5 }, { x: 0.5, y: 1.4 }];
   assertBox(faceBox(landmarks, frame), [0, 250, 500, 250]);
-});
-
-const FACE_OVAL_START = 10;
-
-function fullMesh() {
-  return Array.from({ length: 478 }, (_, index) => ({ x: index / 1000, y: 0.5 }));
-}
-
-test('faceOutline takes the 36 contour landmarks in frame pixels', () => {
-  const outline = faceOutline(fullMesh(), frame);
-  assert.equal(outline.length, 36);
-  assertBox(outline[0], [FACE_OVAL_START, 250]);
-});
-
-test('faceOutline clamps points outside the frame', () => {
-  const mesh = fullMesh();
-  mesh[10] = { x: -0.4, y: 1.7 };
-  assertBox(faceOutline(mesh, frame)[0], [0, 500]);
-});
-
-test('faceOutline gives null for an incomplete mesh', () => {
-  assert.equal(faceOutline([{ x: 0, y: 0 }, { x: 0.1, y: 0.1 }], frame), null);
-});
-
-test('faceDetections carries the contour next to the box', () => {
-  const [face] = faceDetections({ faceLandmarks: [fullMesh()], faceBlendshapes: [] }, frame);
-  assert.equal(face.outline.length, 36);
-  const [short] = faceDetections({ faceLandmarks: [[{ x: 0, y: 0 }, { x: 0.1, y: 0.1 }]], faceBlendshapes: [] }, frame);
-  assert.equal(short.outline, null);
 });
 
 test('faceDetections links blendshapes to the face by index', () => {
