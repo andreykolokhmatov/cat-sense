@@ -2,13 +2,15 @@ import { startCamera } from './camera.js';
 import { startCatView } from './catView.js';
 import { currentLine, lookAt, playMeow, say, think, unlockAudio } from './cat.js';
 import { detectStats, faceTracks, getDetections, markGrudge, modelStatus, onDetections, startDetection } from './detect.js';
-import { drawDevBoxes, initDevMode, isDev, logAsk, logReply, trackedFetch } from './devMode.js';
+import { drawDevBoxes, initDevMode, isDev, logAsk, logLoad, logReply, trackedFetch } from './devMode.js';
+import { runLoading } from './loadingScreen.js';
 import { askCat } from './logic/askCat.js';
 import { screenToVideo, videoFrame } from './logic/coverMap.js';
 import { tapBox } from './logic/cropRegion.js';
 import { grudgeMarks } from './logic/grudgeMarks.js';
 import { pickTarget } from './logic/pickTarget.js';
 import { drawMarks } from './marks.js';
+import { startPreload, takePreloaded } from './preload.js';
 import { saveFrame } from './saveFrame.js';
 import { snapshot } from './snapshot.js';
 import { startWarmup } from './warmup.js';
@@ -43,6 +45,7 @@ let lastText = null;
 let busy = false;
 let catView = null;
 let press = null;
+let loading = false;
 
 async function loadPhrases() {
   try {
@@ -236,15 +239,20 @@ async function handleStart() {
     startButton.disabled = false;
     return;
   }
+  startWarmup();
+  loading = true;
+  const ready = startDetection(video, takePreloaded());
+  if (!params.has('catcss')) {
+    // Hidden under the intro while loading: drawing there would only take time from the models.
+    catView = startCatView(catCanvas, video, { isOn: () => liveCatView() && !loading, onFail: useCssCatVision });
+    if (!catView) useCssCatVision();
+  }
+  const { summary } = await runLoading(ready);
+  loading = false;
+  logLoad(summary);
   intro.hidden = true;
   document.body.classList.remove('is-intro');
   say('Мяу! Тапни по чему-нибудь.', 'happy');
-  startWarmup();
-  startDetection(video);
-  if (!params.has('catcss')) {
-    catView = startCatView(catCanvas, video, { isOn: liveCatView, onFail: useCssCatVision });
-    if (!catView) useCssCatVision();
-  }
   listenToTaps();
   onDetections(redrawMarks);
   onDetections(redrawDev);
@@ -253,6 +261,7 @@ async function handleStart() {
 
 initDevMode();
 showIntro();
+startPreload();
 loadPhrases();
 setUpPanel();
 startButton.addEventListener('click', handleStart);

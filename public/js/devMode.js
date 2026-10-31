@@ -146,6 +146,12 @@ function row(kind, title, text, detail) {
   return item;
 }
 
+// One line about the loading screen. Logged even with the mode off: it is turned on after the
+// fact, and the cold start is what this line measures.
+export function logLoad(text) {
+  row('load', `Загрузка · ${new Date().toLocaleTimeString('ru-RU')}`, text);
+}
+
 // Call before askCat; returns null when the mode is off, so the caller passes no fetchFn.
 export function logAsk(target, image) {
   if (!on) return null;
