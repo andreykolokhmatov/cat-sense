@@ -69,11 +69,13 @@ export function runLoading(ready) {
     let finished = false;
     let line = null;
     let timer = null;
+    let deadline = null;
 
     function end(skipped) {
       if (finished) return;
       finished = true;
       clearInterval(timer);
+      clearTimeout(deadline);
       stopListening();
       skipButton.removeEventListener('click', onSkip);
       skipButton.classList.remove('is-shown');
@@ -103,6 +105,8 @@ export function runLoading(ready) {
 
     skipButton.addEventListener('click', onSkip);
     timer = setInterval(draw, FRAME_MS);
+    // Its own timer as well: the deadline must not depend on the redraw running.
+    deadline = setTimeout(() => end(false), LOADER_MAX_MS);
     draw();
   });
 }

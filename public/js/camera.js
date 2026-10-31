@@ -36,7 +36,10 @@ async function resumeWhenVisible(video) {
 
   const track = stream?.getVideoTracks()[0];
   const alive = track?.readyState === 'live' && !track.muted && video.currentTime !== startedAt;
-  if (alive) return;
+  if (alive) {
+    relayout(video);
+    return;
+  }
 
   reopening = true;
   try {
@@ -47,6 +50,17 @@ async function resumeWhenVisible(video) {
   } finally {
     reopening = false;
   }
+  relayout(video);
+}
+
+// A Home Screen app back from a long background drew the video at the stream's own size,
+// letterboxed, ignoring object-fit: cover. Rebuilding the element's box brings the fill back.
+function relayout(video) {
+  video.style.display = 'none';
+  void video.offsetHeight;
+  video.style.display = '';
+  // iOS may pause a video that was out of the layout even for a moment.
+  video.play().catch(() => {});
 }
 
 // Returns null when the video plays, otherwise a message for the cat to say.
