@@ -14,13 +14,18 @@ const SERVER_ERRORS = {
   timeout: 'модель не успела',
 };
 
-export function describeTarget(target) {
+function whatIsTapped(target) {
   if (target.kind === 'person') {
     const parts = [`человек, эмоция: ${EMOTION_LABELS[target.emotion] ?? target.emotion}`];
     if (target.grudge) parts.push(`кот ${GRUDGE_LABELS[target.grudge] ?? target.grudge}`);
     return parts.join(', ');
   }
   return target.label === 'unknown' ? 'предмет, название определит Gemini' : `предмет: ${target.label}`;
+}
+
+// `hero`: the request went out with the cat in the mask.
+export function describeTarget(target, hero = false) {
+  return hero ? `${whatIsTapped(target)}, кот в маске` : whatIsTapped(target);
 }
 
 function parse(raw) {
@@ -46,7 +51,31 @@ export function askOutcome(call, reply) {
     return { ok: false, reason: `HTTP ${call.status}${why ? `: ${why}` : ''}` };
   }
   if (!body || body.text !== reply.text) return { ok: false, reason: 'ответ модели не прошёл проверку' };
-  return { ok: true, mood: body.mood };
+  const outcome = { ok: true, mood: body.mood };
+  if (typeof body.seen === 'string') outcome.seen = body.seen;
+  if (typeof body.sure === 'string') outcome.sure = body.sure;
+  if (body.hero === true) outcome.hero = true;
+  return outcome;
+}
+
+// What Gemini recognised, for tuning by eye: `seen` is never shown to the visitor.
+export function recognitionLine({ seen, sure, hero } = {}) {
+  const parts = [];
+  if (seen) parts.push(`видит: ${seen}`);
+  if (sure) parts.push(`уверенность: ${sure}`);
+  if (hero) parts.push('ЛОГО, маска');
+  return parts.join(' · ');
+}
+
+const percent = (share) => `${Math.round(share * 100)}%`;
+
+// The logo gate on a tap on clothes: its figures go in the log so the thresholds can be tuned
+// on the real shirt. `sent` is whether the crop actually went to Gemini.
+export function gateLine(gate, sent) {
+  if (!gate) return 'одежда: кадр не прочитан, торс не отправлен';
+  const figures = `белого ${percent(gate.white)}, тёмного ${percent(gate.dark)}`;
+  if (sent) return `одежда: ${figures}, гейт пропустил, торс → Gemini`;
+  return `одежда: ${figures}, ${gate.pass ? 'гейт пропустил, но нет модели лиц' : 'гейт не пропустил'}, торс не отправлен`;
 }
 
 export function formatSeconds(ms) {

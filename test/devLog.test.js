@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { askOutcome, describeTarget, formatSeconds, perfLine, phasesLine } from '../public/js/logic/devLog.js';
+import { askOutcome, describeTarget, formatSeconds, gateLine, perfLine, phasesLine, recognitionLine } from '../public/js/logic/devLog.js';
 
 const reply = { text: 'Хочу воды!', mood: 'want' };
 
@@ -75,4 +75,39 @@ test('phasesLine skips what was not measured', () => {
 
 test('formatSeconds keeps one decimal', () => {
   assert.equal(formatSeconds(1840), '1.8 с');
+});
+
+test('describeTarget says when the cat asks in the mask', () => {
+  assert.equal(describeTarget({ kind: 'object', label: 'unknown' }, true), 'предмет, название определит Gemini, кот в маске');
+  assert.equal(describeTarget({ kind: 'person', emotion: 'happy' }, false), 'человек, эмоция: радость');
+});
+
+test('a real answer carries what Gemini saw, how sure it was and the logo', () => {
+  const body = { text: 'Это пульт?', mood: 'curious', seen: 'пульт', sure: 'low' };
+  const call = { sent: true, status: 200, raw: JSON.stringify(body) };
+  assert.deepEqual(askOutcome(call, body), { ok: true, mood: 'curious', seen: 'пульт', sure: 'low' });
+  const hero = { text: 'Маска надета.', mood: 'happy', sure: 'high', hero: true };
+  assert.deepEqual(askOutcome({ sent: true, status: 200, raw: JSON.stringify(hero) }, hero), {
+    ok: true,
+    mood: 'happy',
+    sure: 'high',
+    hero: true,
+  });
+});
+
+test('recognitionLine names the object, the confidence and the logo, and skips what is missing', () => {
+  assert.equal(recognitionLine({ seen: 'кружка', sure: 'high' }), 'видит: кружка · уверенность: high');
+  assert.equal(recognitionLine({ sure: 'high', hero: true }), 'уверенность: high · ЛОГО, маска');
+  assert.equal(recognitionLine({ ok: true, mood: 'happy' }), '');
+  assert.equal(recognitionLine(), '');
+});
+
+test('gateLine shows the gate figures and whether the torso went out', () => {
+  assert.equal(gateLine({ white: 0.123, dark: 0.6, pass: true }, true), 'одежда: белого 12%, тёмного 60%, гейт пропустил, торс → Gemini');
+  assert.equal(
+    gateLine({ white: 0, dark: 0.9, pass: false }, false),
+    'одежда: белого 0%, тёмного 90%, гейт не пропустил, торс не отправлен',
+  );
+  assert.match(gateLine({ white: 0.1, dark: 0.5, pass: true }, false), /нет модели лиц, торс не отправлен/);
+  assert.match(gateLine(undefined, false), /торс не отправлен/);
 });

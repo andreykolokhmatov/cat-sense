@@ -1,19 +1,26 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { LOGO_JPEG_BASE64 } from '../api/_logo.js';
 import {
   GRUDGES,
+  HERO_PROMPT,
+  HERO_TEXT,
   MAX_IMAGE_CHARS,
+  MAX_SEEN_CHARS,
+  SCHEMAS,
   SYSTEM_PROMPT,
   createHandler,
   createRateLimiter,
   geminiRequest,
   parseAsk,
   parseReply,
+  replyKind,
   thinkingConfig,
   userPrompt,
 } from '../api/ask.js';
 
 const cupAsk = { kind: 'object', label: 'cup', image: 'abc=' };
+const torsoAsk = { kind: 'person', emotion: 'happy', torso: 'dG9yc28=' };
 const env = { GEMINI_API_KEY: 'test-key' };
 
 function geminiData(reply) {
@@ -129,7 +136,7 @@ test('geminiRequest sends no image with a grudge', () => {
 
 test('geminiRequest sends the image only for objects', () => {
   const objectParts = geminiRequest(cupAsk).contents[0].parts;
-  assert.deepEqual(objectParts[0], { inlineData: { mimeType: 'image/jpeg', data: 'abc=' } });
+  assert.deepEqual(objectParts[3], { inlineData: { mimeType: 'image/jpeg', data: 'abc=' } });
   const personParts = geminiRequest({ kind: 'person', emotion: 'happy' }).contents[0].parts;
   assert.equal(personParts.length, 1);
   assert.ok(!JSON.stringify(personParts).includes('inlineData'));
@@ -147,6 +154,173 @@ test('thinking is switched off in the form each model generation accepts', () =>
   assert.deepEqual(thinkingConfig('gemini-3.8-flash'), { thinkingLevel: 'low' });
   assert.deepEqual(thinkingConfig('gemini-3.5-flash-lite'), { thinkingLevel: 'low' });
   assert.deepEqual(geminiRequest(cupAsk).generationConfig.thinkingConfig, { thinkingLevel: 'low' });
+});
+
+test('thinking level comes from a whitelist and falls back to low', () => {
+  assert.deepEqual(thinkingConfig('gemini-3.5-flash-lite', 'medium'), { thinkingLevel: 'medium' });
+  assert.deepEqual(thinkingConfig('gemini-3.5-flash-lite', 'MINIMAL'), { thinkingLevel: 'low' });
+  assert.deepEqual(thinkingConfig('gemini-3.5-flash-lite', 'evil'), { thinkingLevel: 'low' });
+  assert.deepEqual(thinkingConfig('gemini-2.5-flash', 'high'), { thinkingBudget: 0 });
+});
+
+test('the logo reference is a small JPEG in base64', () => {
+  assert.ok(LOGO_JPEG_BASE64.startsWith('/9j/'));
+  assert.ok(LOGO_JPEG_BASE64.length < 40_000);
+  assert.match(LOGO_JPEG_BASE64, /^[A-Za-z0-9+/]+={0,2}$/);
+});
+
+test('schemas name the object and the confidence before the line', () => {
+  assert.deepEqual(SCHEMAS.object.propertyOrdering, ['seen', 'sure', 'logo', 'text', 'mood']);
+  assert.deepEqual(SCHEMAS.torso.propertyOrdering, ['logo', 'sure', 'text', 'mood']);
+  assert.deepEqual(SCHEMAS.person.propertyOrdering, ['text', 'mood']);
+  for (const schema of Object.values(SCHEMAS)) {
+    assert.deepEqual(Object.keys(schema.properties), schema.propertyOrdering);
+    assert.deepEqual(schema.required, schema.propertyOrdering);
+  }
+  assert.equal(SCHEMAS.object.properties.logo.type, 'BOOLEAN');
+  assert.deepEqual(SCHEMAS.object.properties.sure.enum, ['high', 'low']);
+});
+
+test('geminiRequest picks the schema by kind', () => {
+  assert.equal(geminiRequest(cupAsk).generationConfig.responseSchema, SCHEMAS.object);
+  assert.equal(geminiRequest(torsoAsk).generationConfig.responseSchema, SCHEMAS.torso);
+  assert.equal(geminiRequest({ kind: 'person', emotion: 'happy' }).generationConfig.responseSchema, SCHEMAS.person);
+});
+
+test('geminiRequest puts the logo reference first and the camera crop after it', () => {
+  for (const [ask, photo] of [[cupAsk, 'abc='], [torsoAsk, 'dG9yc28=']]) {
+    const parts = geminiRequest(ask).contents[0].parts;
+    assert.equal(parts.length, 5);
+    assert.match(parts[0].text, /Эталон/);
+    assert.equal(parts[1].inlineData.data, LOGO_JPEG_BASE64);
+    assert.match(parts[2].text, /с камеры/);
+    assert.deepEqual(parts[3], { inlineData: { mimeType: 'image/jpeg', data: photo } });
+    assert.equal(parts[4].text, userPrompt(ask));
+  }
+});
+
+test('replyKind tells object, torso and plain person apart', () => {
+  assert.equal(replyKind(cupAsk), 'object');
+  assert.equal(replyKind(torsoAsk), 'torso');
+  assert.equal(replyKind({ kind: 'person', emotion: 'happy' }), 'person');
+});
+
+test('parseAsk keeps hero only when it is literally true, on every kind of ask', () => {
+  const grudge = { kind: 'person', emotion: 'happy', grudge: 'start' };
+  for (const ask of [cupAsk, torsoAsk, { kind: 'person', emotion: 'happy' }, grudge]) {
+    assert.deepEqual(parseAsk({ ...ask, hero: true }), { ...ask, hero: true });
+    for (const hero of ['true', 1, false, null, {}, ['true']]) {
+      assert.deepEqual(parseAsk({ ...ask, hero }), ask, String(hero));
+    }
+  }
+  assert.deepEqual(parseAsk({ ...grudge, torso: 'dG9yc28=', hero: true }), { ...grudge, hero: true });
+  assert.equal(parseAsk({ kind: 'person', emotion: 'evil', hero: true }), null);
+});
+
+test('userPrompt adds the superhero instruction only for a masked cat', () => {
+  assert.match(HERO_PROMPT, /кот-супергерой/);
+  assert.match(HERO_PROMPT, /Арена героев/);
+  const asks = [cupAsk, torsoAsk, { kind: 'person', emotion: 'happy' }, { kind: 'person', emotion: 'angry', grudge: 'again' }];
+  for (const ask of asks) {
+    assert.ok(!userPrompt(ask).includes(HERO_PROMPT));
+    assert.ok(!userPrompt({ ...ask, hero: false }).includes(HERO_PROMPT));
+    const masked = userPrompt({ ...ask, hero: true });
+    assert.ok(masked.startsWith(userPrompt(ask)));
+    assert.ok(masked.endsWith(HERO_PROMPT));
+  }
+  assert.match(userPrompt({ kind: 'person', emotion: 'angry', grudge: 'again', hero: true }), /обижен/);
+  assert.ok(!SYSTEM_PROMPT.includes(HERO_PROMPT));
+});
+
+test('handler sends the superhero instruction and still gives the fixed line on a sure logo', async () => {
+  const calls = [];
+  const fetchFn = okFetch({ seen: 'футболка', sure: 'high', logo: true, text: 'Мур', mood: 'want' }, calls);
+  const res = await call(createHandler({ fetchFn, env }), { ...cupAsk, hero: true });
+  assert.deepEqual(res.body, { text: HERO_TEXT, mood: 'happy', hero: true, sure: 'high', seen: 'футболка' });
+  const parts = JSON.parse(calls[0].options.body).contents[0].parts;
+  assert.ok(parts.at(-1).text.endsWith(HERO_PROMPT));
+});
+
+test('parseAsk keeps a valid torso for a person', () => {
+  assert.deepEqual(parseAsk(torsoAsk), torsoAsk);
+});
+
+test('parseAsk rejects a broken or oversized torso', () => {
+  for (const torso of ['data:image/jpeg;base64,abc', '', 42, null, 'a'.repeat(MAX_IMAGE_CHARS + 1)]) {
+    assert.equal(parseAsk({ ...torsoAsk, torso }), null, String(torso).slice(0, 20));
+  }
+});
+
+test('parseAsk drops the torso with a grudge, even a broken one', () => {
+  const grudge = { kind: 'person', emotion: 'happy', grudge: 'again' };
+  assert.deepEqual(parseAsk({ ...grudge, torso: 'dG9yc28=' }), grudge);
+  assert.deepEqual(parseAsk({ ...grudge, torso: 'not base64!' }), grudge);
+});
+
+test('parseAsk ignores a torso on an object', () => {
+  assert.deepEqual(parseAsk({ ...cupAsk, torso: 'dG9yc28=' }), cupAsk);
+});
+
+test('userPrompt for a torso asks about the logo and keeps the line on the emotion', () => {
+  const prompt = userPrompt(torsoAsk);
+  assert.match(prompt, /радость/);
+  assert.match(prompt, /лого/);
+  assert.doesNotMatch(userPrompt({ kind: 'person', emotion: 'happy' }), /лого/);
+});
+
+test('system prompt has the confidence, logo and torso rules', () => {
+  assert.match(SYSTEM_PROMPT, /ровно в центре/);
+  assert.match(SYSTEM_PROMPT, /sure = "low"/);
+  assert.match(SYSTEM_PROMPT, /догадка или вопрос/);
+  assert.match(SYSTEM_PROMPT, /белая маска/);
+  assert.match(SYSTEM_PROMPT, /не упоминай эталон/);
+  assert.match(SYSTEM_PROMPT, /символ Бэтмена/);
+  assert.match(SYSTEM_PROMPT, /живая кошка/);
+  assert.match(SYSTEM_PROMPT, /ни слова об одежде/);
+});
+
+test('parseReply sets hero only for a sure logo and swaps in the fixed line', () => {
+  const sure = { seen: 'футболка', sure: 'high', logo: true, text: 'Это маска героя!', mood: 'curious' };
+  assert.deepEqual(parseReply(geminiData(sure), 'object'), {
+    text: HERO_TEXT,
+    mood: 'happy',
+    hero: true,
+    sure: 'high',
+    seen: 'футболка',
+  });
+  assert.equal(HERO_TEXT, 'Маска надета. Арена героев, я с вами!');
+  const unsure = parseReply(geminiData({ ...sure, sure: 'low' }), 'object');
+  assert.deepEqual(unsure, { text: 'Это маска героя!', mood: 'curious', sure: 'low', seen: 'футболка' });
+  const noLogo = parseReply(geminiData({ ...sure, logo: false }), 'object');
+  assert.equal(noLogo.hero, undefined);
+  assert.equal(parseReply(geminiData({ ...sure, logo: 'true' }), 'object').hero, undefined);
+});
+
+test('parseReply gives the hero line even when the model text is unusable', () => {
+  const reply = parseReply(geminiData({ logo: true, sure: 'high', text: '', mood: 'sleepy' }), 'torso');
+  assert.deepEqual(reply, { text: HERO_TEXT, mood: 'happy', hero: true, sure: 'high' });
+});
+
+test('parseReply treats a bad sure as low and drops a long or missing seen', () => {
+  const base = { text: 'Мур', mood: 'happy', logo: false };
+  assert.deepEqual(parseReply(geminiData({ ...base, sure: 'maybe', seen: 'кружка' }), 'object'), {
+    text: 'Мур',
+    mood: 'happy',
+    sure: 'low',
+    seen: 'кружка',
+  });
+  assert.deepEqual(parseReply(geminiData({ ...base, sure: 'high', seen: 'х'.repeat(MAX_SEEN_CHARS + 1) }), 'object'), {
+    text: 'Мур',
+    mood: 'happy',
+    sure: 'high',
+  });
+  assert.deepEqual(parseReply(geminiData({ ...base, sure: 'high' }), 'object'), { text: 'Мур', mood: 'happy', sure: 'high' });
+});
+
+test('parseReply for a torso has no seen, for a person no extras', () => {
+  const reply = { seen: 'кружка', sure: 'high', logo: false, text: 'Мур', mood: 'happy' };
+  assert.deepEqual(parseReply(geminiData(reply), 'torso'), { text: 'Мур', mood: 'happy', sure: 'high' });
+  assert.deepEqual(parseReply(geminiData({ ...reply, logo: true }), 'person'), { text: 'Мур', mood: 'happy' });
 });
 
 test('parseReply returns trimmed text and mood', () => {
@@ -175,10 +349,11 @@ test('rate limiter caps per IP and in total, then frees the window', () => {
 
 test('handler returns the model reply and keeps the key out of the URL', async () => {
   const calls = [];
-  const handler = createHandler({ fetchFn: okFetch({ text: 'Хочу воды!', mood: 'want' }, calls), env });
+  const reply = { seen: 'кружка', sure: 'high', logo: false, text: 'Хочу воды!', mood: 'want' };
+  const handler = createHandler({ fetchFn: okFetch(reply, calls), env });
   const res = await call(handler, cupAsk);
   assert.equal(res.statusCode, 200);
-  assert.deepEqual(res.body, { text: 'Хочу воды!', mood: 'want' });
+  assert.deepEqual(res.body, { text: 'Хочу воды!', mood: 'want', sure: 'high', seen: 'кружка' });
   assert.match(calls[0].url, /gemini-3\.5-flash-lite:generateContent$/);
   assert.ok(!calls[0].url.includes('test-key'));
   assert.equal(calls[0].options.headers['x-goog-api-key'], 'test-key');
@@ -207,6 +382,24 @@ test('handler passes a grudge to the model and returns the usual shape', async (
   assert.equal(res.statusCode, 200);
   assert.deepEqual(res.body, { text: 'Я с тобой не разговариваю.', mood: 'scared' });
   assert.match(JSON.parse(calls[0].options.body).contents[0].parts[0].text, /обиделся/);
+});
+
+test('handler returns hero for a sure logo on a torso and uses GEMINI_THINKING', async () => {
+  const calls = [];
+  const fetchFn = okFetch({ logo: true, sure: 'high', text: 'Мур', mood: 'want' }, calls);
+  const handler = createHandler({ fetchFn, env: { ...env, GEMINI_THINKING: 'medium' } });
+  const res = await call(handler, torsoAsk);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body, { text: HERO_TEXT, mood: 'happy', hero: true, sure: 'high' });
+  const sent = JSON.parse(calls[0].options.body);
+  assert.deepEqual(sent.generationConfig.thinkingConfig, { thinkingLevel: 'medium' });
+  assert.deepEqual(sent.generationConfig.responseSchema, SCHEMAS.torso);
+});
+
+test('handler keeps the plain person reply unchanged', async () => {
+  const handler = createHandler({ fetchFn: okFetch({ text: 'Мур', mood: 'happy' }), env });
+  const res = await call(handler, { kind: 'person', emotion: 'happy' });
+  assert.deepEqual(res.body, { text: 'Мур', mood: 'happy' });
 });
 
 test('handler answers 429 when the limiter says no', async () => {

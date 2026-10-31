@@ -13,6 +13,9 @@
   <link rel="icon" href="/assets/cat/curious.webp" type="image/webp">
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
   <link rel="preload" as="image" href="/assets/halloween/cat-mage.webp" fetchpriority="high">
+  <!-- The models are fetched with CORS on the intro: crossorigin makes these connections the ones they use. -->
+  <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; background: #111; color: #eee; font: 16px/1.4 system-ui, sans-serif; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
     [hidden] { display: none !important; }
@@ -135,6 +138,22 @@
     #start:active { transform: scale(.96); }
     #start:disabled { opacity: .6; }
     #intro p { margin: 0; max-width: 300px; font-size: 14px; color: #b9a8cc; }
+    /* Loading: the intro after the camera opens. The fill and the shine move by transform only,
+       so the compositor keeps them going while the models hold the main thread. */
+    #loading { display: none; flex-direction: column; align-items: center; gap: 10px; width: min(72vw, 280px); }
+    #intro.is-loading #loading { display: flex; }
+    #intro.is-loading #start, #intro.is-loading > p { display: none; }
+    .loading-track { position: relative; width: 100%; height: 14px; border-radius: 999px; overflow: hidden; background: rgba(255, 255, 255, .08); box-shadow: inset 0 0 0 1.5px rgba(190, 140, 255, .35), 0 0 16px rgba(250, 154, 60, .3); }
+    #loading-fill { position: absolute; inset: 0; background: linear-gradient(90deg, #ffb25c, var(--orange)); transform: scaleX(0); transform-origin: 0 50%; transition: transform .2s linear; }
+    .loading-shine { position: absolute; top: 0; bottom: 0; left: 0; width: 40%; background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, .5), rgba(255, 255, 255, 0)); transform: translateX(-100%); animation: shine 1.4s linear infinite; will-change: transform; }
+    @keyframes shine { to { transform: translateX(250%); } }
+    #loading-mb { min-height: 1.4em; font-size: 13px; color: #b9a8cc; font-variant-numeric: tabular-nums; }
+    /* Invisible, not removed, until it is due: the layout does not jump when it appears. */
+    #loading-skip { padding: 10px 20px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, .08); color: #f3e8ff; box-shadow: inset 0 0 0 1.5px rgba(190, 140, 255, .35); font: inherit; font-size: 15px; font-weight: 700; transition: transform .1s, background-color .2s; }
+    #loading-skip:not(.is-shown) { visibility: hidden; }
+    #loading-skip:active { transform: scale(.96); background: rgba(190, 140, 255, .22); }
+    #loading-skip:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) { .loading-shine { animation: none; opacity: 0; } #loading-fill { transition: none; } }
     /* Halloween, kept light on the intro: a night sky and the cat in its mage costume. */
     #intro { overflow: hidden; background: radial-gradient(ellipse at 50% 30%, #3d1f5c 0%, #1d1030 48%, #0c0714 100%); }
     #intro h1 span { text-shadow: 0 0 18px rgba(250, 154, 60, .55); }
@@ -171,6 +190,8 @@
     .dev-gemini .dev-head { color: #4ade80; }
     .dev-fallback { background: rgba(251, 146, 60, .14); }
     .dev-fallback .dev-head { color: #fb923c; }
+    .dev-load { background: rgba(190, 140, 255, .12); }
+    .dev-load .dev-head { color: #c4a5ff; }
     /* The camera panel gets the same costume, quieter: webs in the corners, a spider, pumpkins by the cat. */
     /* Night purple like the intro: the orange cat and pumpkins stand out against it. */
     #panel { background: radial-gradient(ellipse at 75% 20%, #4a2570 0%, rgba(74, 37, 112, 0) 60%), linear-gradient(180deg, #2c1645 0%, #1b0d2c 100%); box-shadow: 0 -10px 30px rgba(120, 60, 180, .35); }
@@ -264,6 +285,14 @@
     <div id="intro-bubble" aria-live="polite">Мяу! Включи камеру, я посмотрю вместе с тобой.</div>
     <div id="intro-cat"><img id="intro-img" src="/assets/halloween/cat-mage.webp" alt="Рыжий кот в костюме мага" draggable="false" fetchpriority="high"></div>
     <button id="start">Включить камеру</button>
+    <div id="loading">
+      <div id="loading-bar" class="loading-track" role="progressbar" aria-label="Загрузка" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div id="loading-fill"></div>
+        <div class="loading-shine"></div>
+      </div>
+      <div id="loading-mb"></div>
+      <button id="loading-skip" type="button">Начать без ожидания</button>
+    </div>
     <p>Тапни по предмету или человеку, и кот скажет, что думает.</p>
     <footer class="credit">Сделано командой <button id="dev-toggle" type="button" aria-label="BugBusters, режим разработчика">BugBusters</button></footer>
   </section>
@@ -283,7 +312,7 @@
         <li><b>Тапни</b> по предмету или человеку, и кот скажет, что он об этом думает.</li>
         <li><b>Удержи палец</b> на человеке, и кот обидится. Обида проходит, когда человек уходит из кадра.</li>
         <li><b>Глазами кошки.</b> Красный и зелёный для кошки почти один цвет, и мир она видит мутнее нас. Зато видит в темноте и замечает любое движение.</li>
-        <li><b>Лица не покидают телефон.</b> Эмоцию кот угадывает прямо здесь. Предмет узнаёт нейросеть по кусочку кадра, лица на нём закрашены.</li>
+        <li><b>Лица не покидают телефон.</b> Эмоцию кот угадывает прямо здесь. Предмет узнаёт нейросеть по кусочку кадра, лица на нём закрашены. Если тапнуть по одежде с белым принтом на тёмном, нейросеть получит кусочек кадра с одеждой, лица на нём тоже закрашены: кот ищет там лого хакатона.</li>
         <li><b>«Сохранить»</b> делает фото с котом и его фразой. Фото остаётся только у тебя.</li>
       </ul>
       <form method="dialog"><button>Понятно</button></form>

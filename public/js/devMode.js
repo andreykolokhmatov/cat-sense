@@ -1,5 +1,5 @@
 import { videoToScreen } from './logic/coverMap.js';
-import { askOutcome, describeTarget, formatSeconds, perfLine, phasesLine } from './logic/devLog.js';
+import { askOutcome, describeTarget, formatSeconds, gateLine, perfLine, phasesLine, recognitionLine } from './logic/devLog.js';
 import { EMOTION_LABELS } from './logic/labels.js';
 
 // Developer mode, switched by a tap on the team name: boxes of what the phone found, the crop
@@ -146,11 +146,20 @@ function row(kind, title, text, detail) {
   return item;
 }
 
+// One line about the loading screen. Logged even with the mode off: it is turned on after the
+// fact, and the cold start is what this line measures.
+export function logLoad(text) {
+  row('load', `Загрузка · ${new Date().toLocaleTimeString('ru-RU')}`, text);
+}
+
 // Call before askCat; returns null when the mode is off, so the caller passes no fetchFn.
-export function logAsk(target, image) {
+// For a tap on clothes `image` is the torso crop and `torso` is what torsoSnapshot returned.
+export function logAsk(target, image, torso, hero = false) {
   if (!on) return null;
-  if (target.kind === 'object') lastCrop = { bbox: target.bbox, at: performance.now() };
-  const item = row('you', `Тап · ${new Date().toLocaleTimeString('ru-RU')}`, describeTarget(target));
+  const cropBox = target.kind === 'object' ? target.bbox : image && target.torsoBox;
+  if (cropBox) lastCrop = { bbox: cropBox, at: performance.now() };
+  const gate = target.torsoBox && !target.grudge ? gateLine(torso?.gate, Boolean(image)) : undefined;
+  const item = row('you', `Тап · ${new Date().toLocaleTimeString('ru-RU')}`, describeTarget(target, hero), gate);
   if (image) {
     const thumb = document.createElement('img');
     thumb.alt = 'Вырезка, которую видит Gemini';
@@ -193,8 +202,9 @@ export async function logReply(entry, reply, timing = {}) {
   const outcome = askOutcome(call, reply);
   const askMs = call.sentAt ? (call.doneAt ?? performance.now()) - call.sentAt : undefined;
   const took = askMs === undefined ? '' : formatSeconds(askMs);
+  const seen = recognitionLine(outcome);
   const title = outcome.ok
-    ? `Gemini · ${took} · ${outcome.mood}`
+    ? `Gemini · ${took} · ${outcome.mood}${seen ? ` · ${seen}` : ''}`
     : `Запасная фраза · ${outcome.reason}${took ? ` · ${took}` : ''}`;
   row(outcome.ok ? 'gemini' : 'fallback', title, reply.text, phasesLine({ ...timing, askMs }));
 }

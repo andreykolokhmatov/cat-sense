@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { PERSON_MIN_SCORE, pickTarget } from '../public/js/logic/pickTarget.js';
+import { PERSON_MIN_SCORE, TORSO_SHARE, pickTarget, torsoBox } from '../public/js/logic/pickTarget.js';
 
 const person = { kind: 'object', label: 'person', bbox: [100, 100, 300, 600] };
 const face = { kind: 'person', emotion: 'happy', bbox: [200, 120, 100, 100] };
@@ -23,8 +23,25 @@ test('tap on a face returns the face with its emotion', () => {
   assert.equal(pickTarget({ x: 250, y: 150 }, [person, face, cup, chair]), face);
 });
 
-test('tap on the body resolves to the face of that person', () => {
-  assert.equal(pickTarget({ x: 250, y: 600 }, [person, face, cup]), face);
+test('tap on the body resolves to the face of that person, with a torso box', () => {
+  const tap = { x: 250, y: 600 };
+  assert.deepEqual(pickTarget(tap, [person, face, cup]), { ...face, torsoBox: torsoBox(tap, person.bbox) });
+});
+
+test('tap on the face itself carries no torso box', () => {
+  assert.equal('torsoBox' in pickTarget({ x: 250, y: 150 }, [person, face]), false);
+});
+
+test('torso box is a square around the tap, narrower than the body', () => {
+  assert.deepEqual(torsoBox({ x: 250, y: 400 }, person.bbox), [160, 310, 180, 180]);
+  assert.equal(TORSO_SHARE, 0.6);
+});
+
+test('torso box stays inside the body near its edges', () => {
+  const [x, y, width, height] = torsoBox({ x: 101, y: 699 }, person.bbox);
+  assert.deepEqual([x, y, width, height], [100, 520, 180, 180]);
+  const wide = torsoBox({ x: 500, y: 50 }, [0, 0, 1000, 100]);
+  assert.deepEqual(wide, [450, 0, 100, 100]);
 });
 
 test('tap on the body ignores a face of someone else', () => {
@@ -36,7 +53,7 @@ test('tap on the body ignores a face of someone else', () => {
 
 test('person without a face never becomes an object', () => {
   const target = pickTarget({ x: 250, y: 600 }, [person]);
-  assert.deepEqual(target, { kind: 'person', emotion: 'neutral', bbox: person.bbox });
+  assert.deepEqual(target, { kind: 'person', emotion: 'neutral', bbox: person.bbox, torsoBox: torsoBox({ x: 250, y: 600 }, person.bbox) });
 });
 
 test('threshold is 0.75', () => {
@@ -50,7 +67,12 @@ test('weak body without a face is not a person, so the tap goes as an object', (
 
 test('confident body without a face stays a neutral person', () => {
   const body = { ...person, score: 0.9 };
-  assert.deepEqual(pickTarget({ x: 250, y: 600 }, [body]), { kind: 'person', emotion: 'neutral', bbox: body.bbox });
+  assert.deepEqual(pickTarget({ x: 250, y: 600 }, [body]), {
+    kind: 'person',
+    emotion: 'neutral',
+    bbox: body.bbox,
+    torsoBox: torsoBox({ x: 250, y: 600 }, body.bbox),
+  });
 });
 
 test('body exactly at the threshold is a person', () => {
@@ -60,13 +82,18 @@ test('body exactly at the threshold is a person', () => {
 
 test('weak body with a face inside still resolves to the face', () => {
   const weak = { ...person, score: 0.3 };
-  assert.equal(pickTarget({ x: 250, y: 600 }, [weak, face]), face);
+  assert.deepEqual(pickTarget({ x: 250, y: 600 }, [weak, face]), { ...face, torsoBox: torsoBox({ x: 250, y: 600 }, weak.bbox) });
 });
 
 test('weak body inside a confident one falls through to the confident one', () => {
   const big = { kind: 'object', label: 'person', bbox: [0, 0, 1000, 1000], score: 0.95 };
   const weak = { ...person, score: 0.4 };
-  assert.deepEqual(pickTarget({ x: 250, y: 600 }, [big, weak]), { kind: 'person', emotion: 'neutral', bbox: big.bbox });
+  assert.deepEqual(pickTarget({ x: 250, y: 600 }, [big, weak]), {
+    kind: 'person',
+    emotion: 'neutral',
+    bbox: big.bbox,
+    torsoBox: torsoBox({ x: 250, y: 600 }, big.bbox),
+  });
 });
 
 test('face keeps its track and grudge flags', () => {

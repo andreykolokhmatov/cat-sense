@@ -1,5 +1,6 @@
 import { EMOTION_LABELS, OBJECT_LABELS } from '../public/js/logic/labels.js';
 import { MOODS } from '../public/js/logic/pickPhrase.js';
+import { LOGO_JPEG_BASE64 } from './_logo.js';
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
@@ -10,6 +11,13 @@ export const GEMINI_TIMEOUT_MS = 8000;
 export const MAX_IMAGE_CHARS = 400_000;
 export const MAX_TEXT_CHARS = 200;
 export const GRUDGES = ['start', 'again'];
+export const SURE = ['high', 'low'];
+export const MAX_SEEN_CHARS = 60;
+export const THINKING_LEVELS = ['low', 'medium', 'high'];
+// Decided by the team: the hero line is fixed, the model's own text is never shown for it.
+export const HERO_TEXT = 'Маска надета. Арена героев, я с вами!';
+export const HERO_PROMPT =
+  'Ты сейчас в маске героя хакатона "Арена героев": отвечай как кот-супергерой (защищаю, спасаю, на страже), но так же коротко, по тем же правилам.';
 const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
 
 export const SYSTEM_PROMPT = `Ты домашний кот, маскот приложения "Кошачье чутьё". Человек навёл камеру телефона на что-то и тапнул по экрану, а ты комментируешь это в пузыре рядом с собой.
@@ -19,13 +27,24 @@ export const SYSTEM_PROMPT = `Ты домашний кот, маскот при�
 Как отвечать:
 - Одна или две короткие фразы, всего не больше 12 слов. Это реплика в пузыре, а не рассказ.
 - Только по-русски, от первого лица, как говорит кот. Без эмодзи, хэштегов и кавычек вокруг реплики. Не начинай каждую реплику с "Мяу".
-- Если показали предмет: по картинке пойми, что это на самом деле. Подсказка детектора может ошибаться, верь картинке. Реплика должна ясно показывать, что ты узнал предмет: назови его прямо или так, чтобы было понятно. Потом скажи, чего ты от него хочешь или что о нём думаешь.
-- Если картинка размытая, тёмная или на ней ничего нет: смешно признайся, что не разглядел, и предположи что-нибудь.
+- Если показали предмет, работай по порядку. Сначала найди предмет ровно в центре картинки: человек тапнул именно по нему, соседние предметы по краям не в счёт. Подсказка детектора может ошибаться, верь картинке. Запиши в seen, что это, двумя-тремя словами. Потом в sure честно оцени уверенность. Только потом пиши реплику.
+- sure = "high", только если предмет хорошо виден и ты готов поспорить на миску корма. Иначе sure = "low".
+- При sure = "high" реплика ясно показывает, что ты узнал предмет: назови его тем же словом, что в seen, или точным синонимом. Не подменяй его общими словами вроде "коробочка", "штука", "блестяшка": человек должен услышать, что ты понял, что это. Потом скажи, чего ты от него хочешь или что о нём думаешь.
+- При sure = "low" не выдавай догадку за факт: реплика звучит как догадка или вопрос, например "Это что, пульт? Дай понюхать." Если картинка размытая, тёмная или на ней ничего нет, смешно признайся, что не разглядел.
 - Чёрные прямоугольники на картинке закрывают лица людей. Не упоминай их и не гадай, кто там.
 - Если назвали эмоцию человека: отреагируй на неё как кот, и каждый раз придумывай новый повод. Кот может радоваться вместе, насторожиться, спрятаться, подлизаться, обидеться, позвать гладить, похвастаться, что-то потребовать.
 - Если сказано, что ты обиделся на человека или всё ещё обижен: отвечай недовольно и надменно. Можно отвернуться, демонстративно умываться, требовать извинений вкусняшкой. Без грубости и оскорблений, ни слова о внешности, теле, возрасте, поле и одежде.
-- Не застревай на еде. У кота много тем: сон, коробки, тёплый ноутбук, лазерная точка, птицы за окном, топот в пять утра, вещи на краю стола.
+- Не застревай на еде и на том, чтобы уронить со стола: это самые заезженные реакции, бери их только когда они правда лучше всего подходят предмету. Реакция исходит из самого предмета: охотиться на то, что шевелится или шуршит; спать на тёплом и мягком; залезть в то, во что можно залезть; насторожиться от гудящего, мигающего и незнакомого; презирать скучное; ревновать хозяина к тому, чем он занят; похвастаться, что это теперь твоё. У кота много тем: сон, коробки, тёплый ноутбук, лазерная точка, птицы за окном, топот в пять утра.
+- Настроение тоже бери по предмету, а не по привычке: curious, scared и happy так же хороши, как want.
 - Не обсуждай внешность, тело, возраст, пол и одежду людей. Не груби, не ругайся, никакой политики, религии и опасных советов. Ты кот для всей семьи.
+
+Лого "Арены героев":
+- Иногда первой картинкой идёт эталон лого. Это не то, что показал человек: не упоминай эталон и не комментируй его.
+- Лого - это белая маска супергероя на тёмном фоне: два острых уха торчат вверх, широкий лоб, две узкие прорези глаз скошены к переносице, рта нет, снизу посередине маленький выступ-нос. Только силуэт, без надписей и рисунка внутри.
+- Ставь logo = true, если на картинке с камеры та же маска, даже если она помята, в складках, повёрнута до 45 градусов, видна наполовину, напечатана на бумаге или показана на экране телефона.
+- Ставь logo = false для всего остального: живая кошка или кошачья морда, ободок с кошачьими ушками, хэллоуинская летучая мышь, символ Бэтмена в овале, маска с прорезью для рта или на всё лицо, однотонная футболка, другой белый принт или надпись, кружка, просто белое пятно.
+- Сомневаешься, та ли это маска: logo = false или sure = "low".
+- Если вместе с эмоцией человека пришла картинка его одежды: смотри на неё только ради лого, в logo и sure. Реплика всё равно про эмоцию человека, ни слова об одежде, теле и том, что на картинке.
 
 Поле mood выбери по смыслу реплики:
 - want: хочешь это съесть, попить, поиграть, уронить, залезть внутрь.
@@ -33,16 +52,41 @@ export const SYSTEM_PROMPT = `Ты домашний кот, маскот при�
 - scared: страшно или подозрительно, например пылесос, огурец, злой человек.
 - happy: доволен, мурчишь, радуешься.
 
-Ответ строго JSON: {"text": "реплика", "mood": "want" | "curious" | "scared" | "happy"}.`;
+Ответ строго JSON с полями из схемы ответа, в её порядке.`;
 
-const RESPONSE_SCHEMA = {
-  type: 'OBJECT',
-  properties: {
-    text: { type: 'STRING' },
-    mood: { type: 'STRING', enum: MOODS },
-  },
-  required: ['text', 'mood'],
+const FIELDS = {
+  seen: { type: 'STRING' },
+  sure: { type: 'STRING', enum: SURE },
+  logo: { type: 'BOOLEAN' },
+  text: { type: 'STRING' },
+  mood: { type: 'STRING', enum: MOODS },
 };
+
+// Gemini writes JSON fields in alphabetical order unless told otherwise; the model must name
+// the object and judge its confidence before it commits to a line, so the order matters.
+function schema(order) {
+  return {
+    type: 'OBJECT',
+    properties: Object.fromEntries(order.map((name) => [name, FIELDS[name]])),
+    required: order,
+    propertyOrdering: order,
+  };
+}
+
+export const SCHEMAS = {
+  object: schema(['seen', 'sure', 'logo', 'text', 'mood']),
+  torso: schema(['logo', 'sure', 'text', 'mood']),
+  person: schema(['text', 'mood']),
+};
+
+function isBase64Image(image) {
+  return typeof image === 'string' && image.length <= MAX_IMAGE_CHARS && BASE64.test(image);
+}
+
+export function replyKind(ask) {
+  if (ask.kind === 'object') return 'object';
+  return ask.torso ? 'torso' : 'person';
+}
 
 // Whitelists, not just type checks: the label and emotion go straight into the prompt.
 export function parseAsk(body) {
@@ -53,20 +97,35 @@ export function parseAsk(body) {
       return null;
     }
   }
+  const ask = parseKind(body);
+  // Only a literal true: the flag only switches on a fixed line in the prompt, never free text.
+  return ask && body.hero === true ? { ...ask, hero: true } : ask;
+}
+
+function parseKind(body) {
   if (body?.kind === 'person') {
-    const { emotion, grudge } = body;
+    const { emotion, grudge, torso } = body;
     if (!Object.hasOwn(EMOTION_LABELS, emotion)) return null;
-    if (grudge === undefined) return { kind: 'person', emotion };
-    return GRUDGES.includes(grudge) ? { kind: 'person', emotion, grudge } : null;
+    if (grudge !== undefined) {
+      // An offended cat never looks at the person's clothes, so the torso is dropped unread.
+      return GRUDGES.includes(grudge) ? { kind: 'person', emotion, grudge } : null;
+    }
+    if (torso === undefined) return { kind: 'person', emotion };
+    return isBase64Image(torso) ? { kind: 'person', emotion, torso } : null;
   }
   if (body?.kind !== 'object') return null;
   const { label, image } = body;
   if (label !== 'unknown' && !Object.hasOwn(OBJECT_LABELS, label)) return null;
-  if (typeof image !== 'string' || image.length > MAX_IMAGE_CHARS || !BASE64.test(image)) return null;
+  if (!isBase64Image(image)) return null;
   return { kind: 'object', label, image };
 }
 
 export function userPrompt(ask) {
+  const prompt = basePrompt(ask);
+  return ask.hero ? `${prompt}\n${HERO_PROMPT}` : prompt;
+}
+
+function basePrompt(ask) {
   if (ask.kind === 'person') {
     const emotion = EMOTION_LABELS[ask.emotion];
     if (ask.grudge === 'start') {
@@ -74,6 +133,9 @@ export function userPrompt(ask) {
     }
     if (ask.grudge === 'again') {
       return `Перед тобой человек, на которого ты обижен. Его эмоция: ${emotion}. Картинки нет. Напомни, что ты всё ещё в обиде, и придумай новый повод.`;
+    }
+    if (ask.torso) {
+      return `Перед тобой человек. Его эмоция: ${emotion}. На картинке с камеры его одежда, лицо закрашено. Проверь только, есть ли на ней лого, а реплику скажи про эмоцию.`;
     }
     return `Перед тобой человек. Его эмоция: ${emotion}. Картинки нет.`;
   }
@@ -85,13 +147,27 @@ export function userPrompt(ask) {
 
 // Thinking adds seconds the phone does not have; a one-liner does not need it. Gemini 2.x
 // turns it off with a budget, Gemini 3+ only takes a level, and 3.8 Flash rejects MINIMAL.
-export function thinkingConfig(model) {
-  return /^gemini-2\./.test(model) ? { thinkingBudget: 0 } : { thinkingLevel: 'low' };
+export function thinkingConfig(model, level = 'low') {
+  if (/^gemini-2\./.test(model)) return { thinkingBudget: 0 };
+  return { thinkingLevel: THINKING_LEVELS.includes(level) ? level : 'low' };
 }
 
-export function geminiRequest(ask, model = DEFAULT_MODEL) {
-  const parts = [{ text: userPrompt(ask) }];
-  if (ask.kind === 'object') parts.unshift({ inlineData: { mimeType: 'image/jpeg', data: ask.image } });
+function jpeg(data) {
+  return { inlineData: { mimeType: 'image/jpeg', data } };
+}
+
+export function geminiRequest(ask, model = DEFAULT_MODEL, thinking = 'low') {
+  const kind = replyKind(ask);
+  const photo = kind === 'object' ? ask.image : ask.torso;
+  const parts = photo
+    ? [
+        { text: 'Эталон лого "Арены героев", это не то, что показал человек:' },
+        jpeg(LOGO_JPEG_BASE64),
+        { text: 'Картинка с камеры:' },
+        jpeg(photo),
+        { text: userPrompt(ask) },
+      ]
+    : [{ text: userPrompt(ask) }];
   return {
     systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
     contents: [{ role: 'user', parts }],
@@ -99,14 +175,14 @@ export function geminiRequest(ask, model = DEFAULT_MODEL) {
       temperature: 1,
       maxOutputTokens: 1024,
       responseMimeType: 'application/json',
-      responseSchema: RESPONSE_SCHEMA,
-      thinkingConfig: thinkingConfig(model),
+      responseSchema: SCHEMAS[kind],
+      thinkingConfig: thinkingConfig(model, thinking),
     },
   };
 }
 
-// Returns { text, mood } or null. The model is external input too.
-export function parseReply(data) {
+// Returns { text, mood } plus seen/sure/hero by kind, or null. The model is external input too.
+export function parseReply(data, kind = 'person') {
   const raw = (data?.candidates?.[0]?.content?.parts ?? [])
     .map((part) => part.text ?? '')
     .join('');
@@ -116,6 +192,22 @@ export function parseReply(data) {
   } catch {
     return null;
   }
+  if (kind === 'person') return line(reply);
+
+  const sure = SURE.includes(reply?.sure) ? reply.sure : 'low';
+  const extra = { sure };
+  if (kind === 'object') {
+    const seen = typeof reply?.seen === 'string' ? reply.seen.trim() : '';
+    if (seen && seen.length <= MAX_SEEN_CHARS) extra.seen = seen;
+  }
+  if (reply?.logo === true && sure === 'high') {
+    return { text: HERO_TEXT, mood: 'happy', hero: true, ...extra };
+  }
+  const base = line(reply);
+  return base && { ...base, ...extra };
+}
+
+function line(reply) {
   const text = typeof reply?.text === 'string' ? reply.text.trim() : '';
   if (!text || text.length > MAX_TEXT_CHARS || !MOODS.includes(reply.mood)) return null;
   return { text, mood: reply.mood };
@@ -168,7 +260,7 @@ export function createHandler({
       const response = await fetchFn(`${GEMINI_URL}/${encodeURIComponent(model)}:generateContent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-        body: JSON.stringify(geminiRequest(ask, model)),
+        body: JSON.stringify(geminiRequest(ask, model, env.GEMINI_THINKING)),
         signal: AbortSignal.timeout(timeoutMs),
       });
       const data = await response.json();
@@ -176,7 +268,7 @@ export function createHandler({
         console.error('Gemini error', response.status, data?.error?.message);
         return res.status(502).json({ error: 'model error' });
       }
-      const reply = parseReply(data);
+      const reply = parseReply(data, replyKind(ask));
       if (!reply) {
         console.error('Gemini reply rejected', JSON.stringify(data?.candidates?.[0] ?? data).slice(0, 500));
         return res.status(502).json({ error: 'bad reply' });
