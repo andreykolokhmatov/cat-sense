@@ -11,14 +11,22 @@ function clamp(value, min, max) {
 }
 
 // faceTracks are in video pixels of `frame`; marks come out in screen pixels of `view`, with
-// x, y the centre of the mark, sitting just above the face and never above the screen.
+// x, y the centre of the mark, sitting just above the face and never above the screen, and
+// `face` the top-left box of the face itself and `outline` its contour in screen points (null
+// when the mesh was incomplete), for the red tint.
 export function grudgeMarks(faceTracks, view, frame) {
   return faceTracks
     .filter(({ grudged, missed = 0 }) => grudged && missed <= MARK_MAX_MISSED)
-    .map(({ bbox }) => videoToScreen(bbox, view, frame))
-    .filter(Boolean)
-    .map(([x, y, width]) => {
+    .map(({ bbox, outline }) => ({ box: videoToScreen(bbox, view, frame), outline }))
+    .filter(({ box }) => box)
+    .map(({ box: [x, y, width, height], outline }) => {
       const size = clamp(width * MARK_SHARE, MARK_MIN_PX, MARK_MAX_PX);
-      return { x: x + width / 2, y: Math.max(size / 2, y - size / 2), size };
+      return {
+        x: x + width / 2,
+        y: Math.max(size / 2, y - size / 2),
+        size,
+        face: { x, y, width, height },
+        outline: outline ? outline.map((point) => videoToScreen([point[0], point[1], 0, 0], view, frame).slice(0, 2)) : null,
+      };
     });
 }

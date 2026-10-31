@@ -44,12 +44,27 @@ export function faceBox(landmarks, frame) {
   return [left, top, Math.max(...xs) - left, Math.max(...ys) - top];
 }
 
+// The 36 landmarks of the MediaPipe face mesh that run around the face, in drawing order.
+const FACE_OVAL = [
+  10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149,
+  150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109,
+];
+
+// The face contour as [x, y] points in frame pixels, or null when the mesh is incomplete: a
+// polygon with gaps would draw a wrong shape, and the caller can fall back to the box.
+export function faceOutline(landmarks, frame) {
+  const points = FACE_OVAL.map((index) => landmarks[index]).filter(Boolean);
+  if (points.length !== FACE_OVAL.length) return null;
+  return points.map(({ x, y }) => [clampUnit(x) * frame.width, clampUnit(y) * frame.height]);
+}
+
 export function faceDetections({ faceLandmarks, faceBlendshapes }, frame) {
   return faceLandmarks.map((landmarks, index) => ({
     kind: 'person',
     // Missing blendshapes only cost the emotion: the face must still get its privacy mask.
     emotion: detectEmotion(faceBlendshapes?.[index]?.categories),
     bbox: faceBox(landmarks, frame),
+    outline: faceOutline(landmarks, frame),
   }));
 }
 
