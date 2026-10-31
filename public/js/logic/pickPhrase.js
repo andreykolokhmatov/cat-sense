@@ -10,9 +10,13 @@ function findEntry(phrases, target) {
   return phrases.objects[target.label];
 }
 
-export function pickPhrase(phrases, target, lastText = null, random = Math.random) {
-  const entry = findEntry(phrases, target) ?? phrases.fallback;
+// entry: { mood, lines }. The last line said is skipped while there is another one.
+export function pickLine(entry, lastText = null, random = Math.random) {
   const fresh = entry.lines.filter((line) => line !== lastText);
   const lines = fresh.length > 0 ? fresh : entry.lines;
   return { text: lines[Math.floor(random() * lines.length)], mood: entry.mood };
+}
+
+export function pickPhrase(phrases, target, lastText = null, random = Math.random) {
+  return pickLine(findEntry(phrases, target) ?? phrases.fallback, lastText, random);
 }

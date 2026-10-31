@@ -101,3 +101,11 @@ export function perfLine({ cat, tickMs, cocoMs, cocoEvery } = {}) {
   const coco = dash(cocoMs, (ms) => `${Math.round(ms)} мс${cocoEvery > 1 ? ` каждый ${cocoEvery}-й` : ''}`);
   return `зрение ${view} · тик ${dash(tickMs, (ms) => `${Math.round(ms)} мс`)} · COCO ${coco}`;
 }
+
+// The label of a face while the cat holds a grudge: how close its colours (1 is the same) and
+// its proportions (0 is the same) are to the closest offender. These numbers tune grudges.js.
+export function likenessLine(likeness) {
+  if (!likeness) return '';
+  const geometry = likeness.geometry == null ? '' : ` · лицо ${likeness.geometry.toFixed(2)}`;
+  return ` · цвет ${likeness.color.toFixed(2)}${geometry}`;
+}

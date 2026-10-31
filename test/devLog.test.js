@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { askOutcome, describeTarget, formatSeconds, gateLine, perfLine, phasesLine, recognitionLine } from '../public/js/logic/devLog.js';
+import { askOutcome, describeTarget, formatSeconds, gateLine, likenessLine, perfLine, phasesLine, recognitionLine } from '../public/js/logic/devLog.js';
 
 const reply = { text: 'Хочу воды!', mood: 'want' };
 
@@ -110,4 +110,10 @@ test('gateLine shows the gate figures and whether the torso went out', () => {
   );
   assert.match(gateLine({ white: 0.1, dark: 0.5, pass: true }, false), /нет модели лиц, торс не отправлен/);
   assert.match(gateLine(undefined, false), /торс не отправлен/);
+});
+
+test('likenessLine shows the colour and face scores, or nothing without a grudge', () => {
+  assert.equal(likenessLine(null), '');
+  assert.equal(likenessLine({ color: 0.8234, geometry: 0.0312 }), ' · цвет 0.82 · лицо 0.03');
+  assert.equal(likenessLine({ color: 0.5, geometry: null }), ' · цвет 0.50');
 });

@@ -1,5 +1,5 @@
 // Keeps the same id on a box from one detection cycle to the next. It knows nothing about who
-// is in the box: two people crossing paths may swap ids, which is accepted for the grudge.
+// is in the box: telling the offender from the rest is the job of grudges.js, by appearance.
 
 function iou([ax, ay, aw, ah], [bx, by, bw, bh]) {
   const w = Math.min(ax + aw, bx + bw) - Math.max(ax, bx);
@@ -20,27 +20,38 @@ export function createTracker({ prefix = 't', maxMissed = 8, minIou = 0.2, maxCe
   let tracks = [];
   let nextId = 1;
 
-  function candidates(bboxes) {
+  // A box last seen cycles ago says little about where that face is now, so a lost track only
+  // takes a box that overlaps its old place, never one that merely appeared nearby.
+  function candidates(bboxes, pool) {
     const pairs = [];
-    tracks.forEach((track, t) => {
+    for (const t of pool) {
       bboxes.forEach((bbox, b) => {
-        const overlap = iou(track.bbox, bbox);
-        const shift = centerShift(track.bbox, bbox);
-        if (overlap >= minIou || shift <= maxCenterShift) pairs.push({ t, b, overlap, shift });
+        const overlap = iou(tracks[t].bbox, bbox);
+        const shift = centerShift(tracks[t].bbox, bbox);
+        const near = tracks[t].missed === 0 ? overlap >= minIou || shift <= maxCenterShift : overlap >= minIou;
+        if (near) pairs.push({ t, b, overlap, shift });
       });
-    });
+    }
     return pairs.sort((x, y) => y.overlap - x.overlap || x.shift - y.shift);
   }
 
-  // Greedy best-first: each box and each track is used at most once.
+  // Greedy best-first: each box and each track is used at most once. Tracks seen in the last
+  // cycle choose first: a face still in view keeps its own id even when it slides over the
+  // place where someone else was last seen.
   function update(bboxes) {
     const ids = new Array(bboxes.length).fill(null);
     const usedTracks = new Set();
-    for (const { t, b } of candidates(bboxes)) {
-      if (usedTracks.has(t) || ids[b] !== null) continue;
-      usedTracks.add(t);
-      ids[b] = tracks[t].id;
-      tracks[t] = { ...tracks[t], bbox: bboxes[b], missed: 0 };
+    const indexes = tracks.map((_, t) => t);
+    const fresh = indexes.filter((t) => tracks[t].missed === 0);
+    const lost = indexes.filter((t) => tracks[t].missed > 0);
+    for (const pool of [fresh, lost]) {
+      for (const { t, b } of candidates(bboxes, pool)) {
+        if (usedTracks.has(t) || ids[b] !== null) continue;
+        usedTracks.add(t);
+        ids[b] = tracks[t].id;
+        // gap: how many cycles the face was missing before this one, 0 when it never left.
+        tracks[t] = { ...tracks[t], bbox: bboxes[b], gap: tracks[t].missed, missed: 0 };
+      }
     }
     tracks = tracks
       .map((track, t) => (usedTracks.has(t) ? track : { ...track, missed: track.missed + 1 }))
@@ -48,22 +59,14 @@ export function createTracker({ prefix = 't', maxMissed = 8, minIou = 0.2, maxCe
     bboxes.forEach((bbox, b) => {
       if (ids[b] !== null) return;
       ids[b] = `${prefix}${nextId++}`;
-      tracks.push({ id: ids[b], bbox, missed: 0, grudged: false });
+      tracks.push({ id: ids[b], bbox, missed: 0, gap: 0 });
     });
     return ids;
-  }
-
-  function mark(id) {
-    tracks = tracks.map((track) => (track.id === id ? { ...track, grudged: true } : track));
-  }
-
-  function isGrudged(id) {
-    return tracks.some((track) => track.id === id && track.grudged);
   }
 
   function reset() {
     tracks = [];
   }
 
-  return { update, mark, isGrudged, reset, tracks: () => tracks.map((track) => ({ ...track })) };
+  return { update, reset, tracks: () => tracks.map((track) => ({ ...track })) };
 }

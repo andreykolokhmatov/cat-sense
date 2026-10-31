@@ -1,14 +1,25 @@
 import { startCamera } from './camera.js';
 import { startCatView } from './catView.js';
 import { currentLine, isMuted, lookAt, playMeow, say, setMuted, think, unlockAudio } from './cat.js';
-import { detectStats, faceTracks, getDetections, markGrudge, modelStatus, onDetections, startDetection } from './detect.js';
-import { drawDevBoxes, initDevMode, isDev, logAsk, logLoad, logReply, trackedFetch } from './devMode.js';
+import {
+  detectStats,
+  faceTracks,
+  forgiveGrudge,
+  getDetections,
+  modelStatus,
+  onDetections,
+  startDetection,
+  startGrudge,
+  takeGrudgeEvents,
+} from './detect.js';
+import { drawDevBoxes, initDevMode, isDev, logAsk, logGrudge, logLoad, logReply, trackedFetch } from './devMode.js';
 import { runLoading } from './loadingScreen.js';
 import { askCat } from './logic/askCat.js';
-import { screenToVideo, videoFrame } from './logic/coverMap.js';
+import { screenToVideo, videoFrame, videoToScreen } from './logic/coverMap.js';
 import { tapBox } from './logic/cropRegion.js';
 import { grudgeMarks } from './logic/grudgeMarks.js';
 import { HERO_OFF, heroStep, isMasked } from './logic/heroMask.js';
+import { pickLine } from './logic/pickPhrase.js';
 import { pickTarget } from './logic/pickTarget.js';
 import { drawMarks } from './marks.js';
 import { startPreload, takePreloaded } from './preload.js';
@@ -25,6 +36,16 @@ const INTRO_WAIT_MS = 1500;
 const LONG_PRESS_MS = 600;
 const MOVE_SLOP_PX = 12;
 const MINIMAL_PHRASES = { objects: {}, emotions: {}, fallback: { mood: 'curious', lines: ['Мяу?'] } };
+// Said by the cat on its own, so they never wait for the network: local lines only.
+const LOCAL_LINES = {
+  back: { mood: 'scared', lines: ['Опять ты? Я всё помню.'] },
+  peace: { mood: 'happy', lines: ['Ладно, мир.'] },
+};
+// An offender out of sight for less than this comes back quietly: a face lost for a second
+// (a turned head, motion blur) is no news.
+const BACK_SAY_AFTER_MS = 3000;
+// A line on its own must not cut off the reply the visitor is still reading.
+const QUIET_AFTER_REPLY_MS = 2500;
 
 const video = document.getElementById('video');
 // The canvas over the video is the tap surface; only the grudge marks are drawn on it.
@@ -42,6 +63,7 @@ const debug = params.has('debug');
 
 let phrases = MINIMAL_PHRASES;
 let lastText = null;
+let lastSaidAt = 0;
 let busy = false;
 let catView = null;
 let press = null;
@@ -137,6 +159,7 @@ async function respond(target, point) {
   say(text, shownMood);
   playMeow(shownMood);
   lastText = text;
+  lastSaidAt = performance.now();
   heroEvent({ type: isHero ? 'hero' : 'tap', now: performance.now() }, text);
   busy = false;
 }
@@ -149,19 +172,50 @@ function handleTap(point) {
   respond(target.kind === 'person' && target.grudged ? { ...target, grudge: 'again' } : target, point);
 }
 
-// A body without a face has no track: the cat still takes offence, but there is no mark and
-// nothing to remember.
+// The cat speaks without a question to the model: making peace and spotting an offender
+// again are its own reactions.
+function sayLocal(kind, mood, point) {
+  const { text } = pickLine(phrases.grudge?.[kind] ?? LOCAL_LINES[kind], lastText);
+  if (point) lookAt(point.x, point.y);
+  say(text, mood);
+  playMeow(mood);
+  lastText = text;
+  lastSaidAt = performance.now();
+}
+
+// A hold on the offender makes peace. A body without a face has no track: the cat still takes
+// offence, but there is no mark and nothing to remember.
 function handleLongPress(point) {
   if (busy) return;
   const tap = tapInVideo(point);
   if (!tap) return;
   const target = targetAt(tap);
   if (target.kind !== 'person') return respond(target, point);
+  if (target.track && target.grudged && forgiveGrudge(target.track)) {
+    redrawMarks();
+    logGrudge('Помирились');
+    return sayLocal('peace', 'happy', point);
+  }
   if (target.track) {
-    markGrudge(target.track);
+    startGrudge(target.track);
     redrawMarks();
   }
   respond({ ...target, grudge: 'start' }, point);
+}
+
+function screenPointOf(bbox) {
+  const rect = video.getBoundingClientRect();
+  const box = bbox && videoToScreen(bbox, { width: rect.width, height: rect.height }, videoFrame(video));
+  return box && { x: rect.left + box[0] + box[2] / 2, y: rect.top + box[1] + box[3] / 2 };
+}
+
+function onGrudgeEvents() {
+  for (const event of takeGrudgeEvents()) {
+    if (event.type !== 'back') continue;
+    logGrudge(`Кот узнал обидчика: не было ${Math.round(event.awayMs / 1000)} с`);
+    const quiet = busy || performance.now() - lastSaidAt < QUIET_AFTER_REPLY_MS;
+    if (event.awayMs >= BACK_SAY_AFTER_MS && !quiet) sayLocal('back', 'grudge', screenPointOf(event.bbox));
+  }
 }
 
 function cancelPress() {
@@ -291,6 +345,7 @@ async function handleStart() {
   playMeow('greet');
   listenToTaps();
   onDetections(redrawMarks);
+  onDetections(onGrudgeEvents);
   onDetections(redrawDev);
   window.addEventListener('resize', redrawMarks);
 }

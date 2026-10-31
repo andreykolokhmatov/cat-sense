@@ -1,5 +1,7 @@
+import { colorSignature, faceGeometry, frameGain } from './logic/appearance.js';
 import { videoFrame } from './logic/coverMap.js';
 import { bodyDetections, faceDetections } from './logic/detections.js';
+import { createGrudges } from './logic/grudges.js';
 import { cocoEvery, createAverage, nextPause } from './logic/perf.js';
 import { createTracker } from './logic/tracker.js';
 import { withTimeout } from './logic/withTimeout.js';
@@ -13,6 +15,8 @@ const HAVE_CURRENT_DATA = 2;
 // model loads by its URL. Longer than the loading screen, so a slow but moving download is
 // not fetched twice while the visitor still waits.
 const PRELOAD_WAIT_MS = 30000;
+// Colours of hair and clothes need no detail: the look is read from a small copy of the frame.
+const SAMPLE_LONG_SIDE = 192;
 
 let video = null;
 let cocoModel = null;
@@ -24,6 +28,11 @@ let lastTimestamp = 0;
 // Only the loop feeds the tracker: the tap-time search in detectFacesNow runs on a single
 // frozen frame and would count as a cycle where everyone else went missing.
 const faceTracker = createTracker({ prefix: 'face-' });
+const grudges = createGrudges();
+// Face proportions of the last cycle by track id, for the look taken when a grudge starts.
+let geometries = new Map();
+let sampleCanvas = null;
+const grudgeEvents = [];
 const listeners = [];
 
 function deferred() {
@@ -101,8 +110,43 @@ function nextTimestamp() {
   return lastTimestamp;
 }
 
+function runFaces(source, frame) {
+  const result = faceLandmarker.detectForVideo(source, nextTimestamp());
+  return { found: faceDetections(result, frame), landmarks: result.faceLandmarks };
+}
+
 function findFaces(source, frame) {
-  return faceDetections(faceLandmarker.detectForVideo(source, nextTimestamp()), frame);
+  return runFaces(source, frame).found;
+}
+
+// Only while the cat holds a grudge: without one nobody's look is read at all.
+function sampleFrame(frame) {
+  const scale = SAMPLE_LONG_SIDE / Math.max(frame.width, frame.height);
+  const width = Math.max(1, Math.round(frame.width * scale));
+  const height = Math.max(1, Math.round(frame.height * scale));
+  sampleCanvas ??= document.createElement('canvas');
+  if (sampleCanvas.width !== width || sampleCanvas.height !== height) {
+    sampleCanvas.width = width;
+    sampleCanvas.height = height;
+  }
+  const context = sampleCanvas.getContext('2d', { willReadFrequently: true });
+  context.drawImage(video, 0, 0, width, height);
+  const pixels = context.getImageData(0, 0, width, height);
+  return { pixels, scale, gain: frameGain(pixels) };
+}
+
+function colorsOf(sample, bbox) {
+  return colorSignature(sample.pixels, bbox.map((value) => value * sample.scale), sample.gain);
+}
+
+// A frame that cannot be read costs the colours, not the cycle: the proportions still count.
+function trySample(frame) {
+  try {
+    return sampleFrame(frame);
+  } catch (error) {
+    console.warn('Could not read the frame for the grudge', error);
+    return null;
+  }
 }
 
 async function updateBodies() {
@@ -115,20 +159,40 @@ async function updateBodies() {
   }
 }
 
-function withTracks(found) {
+function withTracks(found, landmarks, frame) {
   const ids = faceTracker.update(found.map(({ bbox }) => bbox));
-  return found.map((face, index) => ({ ...face, track: ids[index], grudged: faceTracker.isGrudged(ids[index]) }));
+  const gaps = new Map(faceTracker.tracks().map(({ id, gap }) => [id, gap]));
+  geometries = new Map(ids.map((id, index) => [id, faceGeometry(landmarks[index], frame)]));
+  if (grudges.active()) {
+    const sample = trySample(frame);
+    const looks = found.map((face, index) => ({
+      track: ids[index],
+      gap: gaps.get(ids[index]) ?? 0,
+      color: sample && colorsOf(sample, face.bbox),
+      geometry: geometries.get(ids[index]),
+    }));
+    for (const event of grudges.update(looks, performance.now())) {
+      grudgeEvents.push({ ...event, bbox: found[ids.indexOf(event.track)]?.bbox });
+    }
+  }
+  return found.map((face, index) => ({
+    ...face,
+    track: ids[index],
+    grudged: grudges.isOffender(ids[index]),
+    likeness: grudges.active() ? grudges.likeness(ids[index]) : null,
+  }));
 }
 
 function updateFaces(frame) {
   if (!faceLandmarker) return;
   let found = [];
+  let landmarks = [];
   try {
-    found = findFaces(video, frame);
+    ({ found, landmarks } = runFaces(video, frame));
   } catch (error) {
     console.warn('Face Landmarker failed on a frame', error);
   }
-  faces = withTracks(found);
+  faces = withTracks(found, landmarks, frame);
   facesReady.resolve('ready');
 }
 
@@ -137,9 +201,12 @@ function notify() {
 }
 
 // After a rotation the old boxes are in another frame, after the background the people may
-// be gone: either way a grudge must not stick to whoever is there now.
+// be gone: either way a grudge must not stick to whoever is there now. The offenders' looks
+// stay, so the cat can still recognise them.
 function forgetFaces() {
   faceTracker.reset();
+  grudges.detach();
+  geometries = new Map();
   faces = faces.map((face) => ({ ...face, track: null, grudged: false }));
 }
 
@@ -221,14 +288,33 @@ export function onDetections(listener) {
   listeners.push(listener);
 }
 
-export function markGrudge(trackId) {
-  faceTracker.mark(trackId);
-  faces = faces.map((face) => (face.track === trackId ? { ...face, grudged: true } : face));
+// Starts a grudge on a face in view, with its look read from the frame right now. Returns
+// whether there was such a face.
+export function startGrudge(trackId) {
+  const face = faces.find((candidate) => candidate.track === trackId);
+  if (!face || !isCurrentFrame()) return false;
+  const sample = trySample(detectionsFrame);
+  const color = sample && colorsOf(sample, face.bbox);
+  grudges.start({ track: trackId, color, geometry: geometries.get(trackId) ?? null }, performance.now());
+  faces = faces.map((candidate) => (candidate.track === trackId ? { ...candidate, grudged: true } : candidate));
+  return true;
+}
+
+// Returns whether there was a grudge on this face to drop.
+export function forgiveGrudge(trackId) {
+  if (!grudges.forgive(trackId)) return false;
+  faces = faces.map((face) => (face.track === trackId ? { ...face, grudged: false } : face));
+  return true;
+}
+
+// { type: 'back', track, awayMs, bbox } for each offender recognised since the last call.
+export function takeGrudgeEvents() {
+  return grudgeEvents.splice(0);
 }
 
 // Tracks in video pixels of the current frame, empty right after a rotation.
 export function faceTracks() {
-  return isCurrentFrame() ? faceTracker.tracks() : [];
+  return isCurrentFrame() ? faceTracker.tracks().map((track) => ({ ...track, grudged: grudges.isOffender(track.id) })) : [];
 }
 
 // For the developer mode: which models are loaded.

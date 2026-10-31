@@ -1,5 +1,5 @@
 import { videoToScreen } from './logic/coverMap.js';
-import { askOutcome, describeTarget, formatSeconds, gateLine, perfLine, phasesLine, recognitionLine } from './logic/devLog.js';
+import { askOutcome, describeTarget, formatSeconds, gateLine, likenessLine, perfLine, phasesLine, recognitionLine } from './logic/devLog.js';
 import { EMOTION_LABELS } from './logic/labels.js';
 
 // Developer mode, switched by a tap on the team name: boxes of what the phone found, the crop
@@ -108,7 +108,7 @@ export function drawDevBoxes(detections, status, view, frame) {
     if (detection.kind === 'person') {
       faces += 1;
       const emotion = EMOTION_LABELS[detection.emotion] ?? detection.emotion;
-      drawBox(context, box, COLORS.face, `лицо: ${emotion}${detection.grudged ? ' · обида' : ''}`);
+      drawBox(context, box, COLORS.face, `лицо: ${emotion}${detection.grudged ? ' · обида' : ''}${likenessLine(detection.likeness)}`);
     } else {
       bodies += 1;
       drawBox(context, box, COLORS.body, `тело ${Math.round((detection.score ?? 0) * 100)}%`, true);
@@ -150,6 +150,12 @@ function row(kind, title, text, detail) {
 // fact, and the cold start is what this line measures.
 export function logLoad(text) {
   row('load', `Загрузка · ${new Date().toLocaleTimeString('ru-RU')}`, text);
+}
+
+// A grudge event the cat did not ask the model about: an offender recognised, peace made.
+export function logGrudge(text) {
+  if (!on) return;
+  row('grudge', `Обида · ${new Date().toLocaleTimeString('ru-RU')}`, text);
 }
 
 // Call before askCat; returns null when the mode is off, so the caller passes no fetchFn.

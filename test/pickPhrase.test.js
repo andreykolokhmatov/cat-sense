@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { GRUDGES, MOODS, pickPhrase } from '../public/js/logic/pickPhrase.js';
+import { GRUDGES, MOODS, pickLine, pickPhrase } from '../public/js/logic/pickPhrase.js';
 
 const phrases = JSON.parse(readFileSync(new URL('../public/phrases.json', import.meta.url), 'utf8'));
 
@@ -62,8 +62,10 @@ test('a grudge on an object is ignored', () => {
   assert.ok(phrases.objects.cup.lines.includes(text));
 });
 
-test('both grudge lists exist and are written', () => {
-  assert.deepEqual(Object.keys(phrases.grudge).sort(), [...GRUDGES].sort());
+// back and peace never go to the API: the cat says them on its own, from these lists only.
+test('every API grudge has its list, and so do the local back and peace lines', () => {
+  for (const name of [...GRUDGES, 'back', 'peace']) assert.ok(phrases.grudge[name]?.lines.length > 0, name);
+  assert.ok(!GRUDGES.includes('back') && !GRUDGES.includes('peace'));
 });
 
 test('never repeats the previous line', () => {
@@ -93,4 +95,10 @@ test('every entry has a known mood and non-empty unique lines', () => {
 
 test('all four emotions from the detection rules are covered', () => {
   assert.deepEqual(Object.keys(phrases.emotions).sort(), ['angry', 'happy', 'neutral', 'surprised']);
+});
+
+test('pickLine skips the last line and keeps the mood', () => {
+  const entry = { mood: 'happy', lines: ['a', 'b'] };
+  for (const value of [0, 0.999]) assert.deepEqual(pickLine(entry, 'a', () => value), { text: 'b', mood: 'happy' });
+  assert.deepEqual(pickLine({ mood: 'scared', lines: ['a'] }, 'a'), { text: 'a', mood: 'scared' });
 });
