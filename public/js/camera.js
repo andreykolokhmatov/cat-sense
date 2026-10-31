@@ -10,9 +10,12 @@ const DENIED_MESSAGE = 'Мне не дали камеру. Разреши её �
 const FAILED_MESSAGE = 'Камера не включилась. Нажми кнопку ещё раз.';
 // Time for the camera to wake up on its own after the page comes back.
 const RESUME_CHECK_MS = 1000;
+// Safari's toolbar animates in steps: one relayout once it has settled is enough.
+const RELAYOUT_DEBOUNCE_MS = 250;
 
 let stream = null;
 let reopening = false;
+let relayoutTimer = null;
 
 function pause(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -63,6 +66,16 @@ function relayout(video) {
   video.play().catch(() => {});
 }
 
+// The same stale picture comes back whenever the box or the stream changes size after that one
+// relayout: in Safari the toolbar settles a moment after the return and 100dvh moves with it,
+// and a camera that restarts may come back at another frame size.
+function relayoutSoon(video) {
+  clearTimeout(relayoutTimer);
+  relayoutTimer = setTimeout(() => {
+    if (!document.hidden) relayout(video);
+  }, RELAYOUT_DEBOUNCE_MS);
+}
+
 // Returns null when the video plays, otherwise a message for the cat to say.
 export async function startCamera(video) {
   if (!window.isSecureContext || !navigator.mediaDevices) return UNSUPPORTED_MESSAGE;
@@ -74,5 +87,7 @@ export async function startCamera(video) {
   document.addEventListener('visibilitychange', () => resumeWhenVisible(video));
   // Safari restores pages from its back-forward cache without a visibilitychange.
   window.addEventListener('pageshow', () => resumeWhenVisible(video));
+  window.addEventListener('resize', () => relayoutSoon(video));
+  video.addEventListener('resize', () => relayoutSoon(video));
   return null;
 }
