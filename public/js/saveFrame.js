@@ -6,8 +6,10 @@ const WIDTH = 1080;
 const STRIP_HEIGHT = 200;
 const ORANGE = '#FA9A3C';
 const INK = '#1c1c1e';
+const NIGHT = ['#2c1645', '#1b0d2c'];
 const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
-const TITLE = 'Кошачье чутьё';
+// The same two-tone logo as on the start screen.
+const TITLE = ['Кошачье ', 'чутьё'];
 // Drawing at a fraction of the size and stretching back stands in for the blur: ctx.filter
 // does not exist in Safari.
 const SOFTEN_SCALE = 0.4;
@@ -39,13 +41,19 @@ function drawCamera(ctx, { video, view, catMode, catCanvas }, height) {
 }
 
 function drawStrip(ctx, top) {
-  ctx.fillStyle = ORANGE;
+  const night = ctx.createLinearGradient(0, top, 0, top + STRIP_HEIGHT);
+  night.addColorStop(0, NIGHT[0]);
+  night.addColorStop(1, NIGHT[1]);
+  ctx.fillStyle = night;
   ctx.fillRect(0, top, WIDTH, STRIP_HEIGHT);
-  ctx.fillStyle = INK;
   ctx.font = `800 64px ${FONT}`;
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
-  ctx.fillText(TITLE, 56, top + STRIP_HEIGHT / 2);
+  const [first, second] = TITLE;
+  ctx.fillStyle = '#fff';
+  ctx.fillText(first, 56, top + STRIP_HEIGHT / 2);
+  ctx.fillStyle = ORANGE;
+  ctx.fillText(second, 56 + ctx.measureText(first).width, top + STRIP_HEIGHT / 2);
 }
 
 // Returns the cat's top edge, so the bubble can sit right above it.
