@@ -1,3 +1,4 @@
+import { EQUIP_FRAMES, POSE_NAMES, allPoseSrcs, poseSrc } from './logic/catPoses.js';
 import { dbToGain, pickSound, soundNames, soundPath } from './logic/sounds.js';
 
 // Below the cat's voice is room rumble, above it the hiss of a cheap microphone.
@@ -8,15 +9,7 @@ const FADE_IN_S = 0.015;
 const FADE_OUT_S = 0.08;
 const MUTED_KEY = 'cat-sense-muted';
 
-const POSES = {
-  want: { src: '/assets/cat/want.webp', emoji: '😻' },
-  curious: { src: '/assets/cat/curious.webp', emoji: '🐱' },
-  scared: { src: '/assets/cat/scared.webp', emoji: '🙀' },
-  happy: { src: '/assets/cat/happy.webp', emoji: '😸' },
-  think: { src: '/assets/cat/thinking.webp', emoji: '😼' },
-  // No offended picture yet: the pensive pose, mirrored by CSS, reads as turning away.
-  grudge: { src: '/assets/cat/thinking.webp', emoji: '😾' },
-};
+const EMOJI = { want: '😻', curious: '🐱', scared: '🙀', happy: '😸', think: '😼', grudge: '😾' };
 const MAX_LEAN_DEG = 10;
 const LEAN_MS = 3500;
 const BLINK_MS = 150;
@@ -36,7 +29,9 @@ const introCat = document.getElementById('intro-cat');
 const introImg = document.getElementById('intro-img');
 const emojiEl = document.createElement('span');
 catEl.append(emojiEl);
-let pose = POSES.curious;
+let poseName = 'curious';
+let masked = false;
+let equipTimer = null;
 let leanTimer = null;
 let typeTimer = null;
 let audioContext = null;
@@ -48,14 +43,27 @@ const clips = new Map();
 // A missing picture must not leave an empty corner: the demo falls back to the emoji pose.
 function showEmoji() {
   catImg.hidden = true;
-  emojiEl.textContent = pose.emoji;
+  emojiEl.textContent = EMOJI[poseName];
 }
 
 catImg.addEventListener('error', showEmoji);
 if (catImg.complete && catImg.naturalWidth === 0) showEmoji();
 
 // Preloaded so that switching poses does not flash an empty frame.
-for (const { src } of Object.values(POSES)) new Image().src = src;
+for (const src of allPoseSrcs()) new Image().src = src;
+
+// The frames of putting the mask on stay in the DOM, hidden but decoded, so no frame waits for
+// its picture.
+const equipImgs = EQUIP_FRAMES.map(({ src }) => {
+  const img = document.createElement('img');
+  img.className = 'equip';
+  img.alt = '';
+  img.draggable = false;
+  img.src = src;
+  img.decode?.().catch(() => {});
+  catEl.append(img);
+  return img;
+});
 
 // Removing the class and forcing a reflow restarts the animation when the same mood repeats.
 function restartClass(el, className) {
@@ -65,12 +73,54 @@ function restartClass(el, className) {
 }
 
 function show(name) {
-  pose = POSES[name] ?? POSES.curious;
+  stopEquip();
+  poseName = POSE_NAMES.includes(name) ? name : 'curious';
   emojiEl.textContent = '';
   catImg.hidden = false;
-  catImg.src = pose.src;
-  restartClass(catEl, `is-${POSES[name] ? name : 'curious'}`);
+  catImg.src = poseSrc(poseName, masked);
+  restartClass(catEl, `is-${poseName}`);
 }
+
+function stopEquip() {
+  if (equipTimer === null) return;
+  clearTimeout(equipTimer);
+  equipTimer = null;
+  delete catEl.dataset.equip;
+  for (const img of equipImgs) img.classList.remove('is-on');
+}
+
+function playEquip(index) {
+  equipImgs.forEach((img, i) => img.classList.toggle('is-on', i === index));
+  equipTimer = setTimeout(() => {
+    if (index + 1 < equipImgs.length) return playEquip(index + 1);
+    stopEquip();
+    show('curious');
+  }, EQUIP_FRAMES[index].ms);
+}
+
+// The mask counts as on from the first frame: a tap during the animation cuts it short and the
+// cat answers already masked. A frame that has not loaded would blink empty, so then the cat
+// just appears in the mask.
+function putMaskOn() {
+  if (masked) return;
+  masked = true;
+  const ready = equipImgs.every((img) => img.complete && img.naturalWidth > 0);
+  if (reducedMotion || catImg.hidden || !ready) return show('curious');
+  show('curious');
+  restartClass(catEl, 'is-equip');
+  catEl.dataset.equip = '';
+  playEquip(0);
+}
+
+function takeMaskOff() {
+  if (!masked) return;
+  masked = false;
+  stopEquip();
+  if (!catImg.hidden) catImg.src = poseSrc(poseName);
+}
+
+document.addEventListener('cat:hero', putMaskOn);
+document.addEventListener('cat:hero-off', takeMaskOff);
 
 function overflows() {
   return bubbleText.scrollHeight > bubbleText.clientHeight + 1;
@@ -142,10 +192,11 @@ export function lookAt(x, y) {
   catEl.style.setProperty('--lean', `${lean}deg`);
 }
 
-// The closed-eyes picture is drawn for the calm pose only: on any other pose it would swap the face.
+// The closed-eyes picture is drawn for the calm pose without the mask only: on anything else it
+// would swap the face.
 function canBlink(el) {
-  if (el === catEl) return pose === POSES.curious && !catImg.hidden && !document.body.classList.contains('is-intro');
-  return !introCat.closest('[hidden]') && introImg.src.endsWith(POSES.curious.src);
+  if (el === catEl) return poseName === 'curious' && !masked && !catImg.hidden && !document.body.classList.contains('is-intro');
+  return !introCat.closest('[hidden]') && introImg.src.endsWith(poseSrc('curious'));
 }
 
 function blink() {

@@ -78,9 +78,13 @@
     #cat.is-scared { animation: shake .5s linear, breathe 3s ease-in-out .5s infinite; }
     #cat.is-happy { animation: wiggle .6s ease-in-out 2, breathe 3s ease-in-out 1.2s infinite; }
     #cat.is-curious { animation: tilt .8s ease-in-out, breathe 3s ease-in-out .8s infinite; }
-    /* Offended: the cat turns its head away from the person and an anger mark throbs above it. */
+    /* Offended: the angry cat huffs and an anger mark throbs above it. */
     #cat.is-grudge { animation: huff .5s ease-out, breathe 3s ease-in-out .5s infinite; }
-    #cat.is-grudge img { transform: scaleX(-1); }
+    /* Putting the mask on. The frames are anchored to the bottom: the one with the mask held
+       overhead is taller and rises above the box for a moment instead of shrinking the cat. */
+    #cat img.equip { position: absolute; left: 0; bottom: 0; height: auto; visibility: hidden; }
+    #cat img.equip.is-on { visibility: visible; }
+    #cat[data-equip] > #cat-img, #cat[data-equip] > .blink { visibility: hidden; }
     #cat.is-grudge::before { content: '💢'; position: absolute; z-index: 1; top: 0; left: 6%; font-size: calc(var(--cat-size) * .22); line-height: 1; animation: throb .9s ease-in-out infinite; }
     @keyframes huff { 0%, 100% { transform: scale(1); } 35% { transform: scale(1.06, .94); } }
     @keyframes throb { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
