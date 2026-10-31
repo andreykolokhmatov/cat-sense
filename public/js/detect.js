@@ -2,10 +2,8 @@ import { videoFrame } from './logic/coverMap.js';
 import { bodyDetections, faceDetections } from './logic/detections.js';
 import { cocoEvery, createAverage, nextPause } from './logic/perf.js';
 import { createTracker } from './logic/tracker.js';
+import { FACE_MODEL_URL, VISION_URL, pageLoaded } from './preload.js';
 
-const VISION_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35';
-const FACE_MODEL_URL =
-  'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 const LOOP_MS = 250;
 // The default is 1, which would leave a second face in the frame without a privacy mask.
 const MAX_FACES = 5;
@@ -23,39 +21,73 @@ let lastTimestamp = 0;
 const faceTracker = createTracker({ prefix: 'face-' });
 const listeners = [];
 
-function pageLoaded() {
-  if (document.readyState === 'complete') return Promise.resolve();
-  return new Promise((resolve) => window.addEventListener('load', resolve, { once: true }));
+function deferred() {
+  let resolve;
+  const promise = new Promise((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
 }
 
-async function loadCoco() {
+// 'ready' after the first real run on a camera frame, when the shaders for its size are built;
+// 'failed' when the model did not load. The loading screen waits for either.
+const cocoReady = deferred();
+const facesReady = deferred();
+
+async function cocoFrom(artifacts) {
+  if (artifacts) {
+    try {
+      return await window.cocoSsd.load({ modelUrl: window.tf.io.fromMemory(artifacts) });
+    } catch (error) {
+      console.warn('COCO-SSD did not load from the preloaded files', error);
+    }
+  }
+  return window.cocoSsd.load();
+}
+
+async function loadCoco(preloaded) {
   try {
     await pageLoaded();
     if (!window.tf || !window.cocoSsd) throw new Error('scripts did not load');
     await window.tf.setBackend('webgl');
     await window.tf.ready();
-    cocoModel = await window.cocoSsd.load();
+    cocoModel = await cocoFrom(await preloaded);
   } catch (error) {
     console.warn('COCO-SSD is unavailable', error);
   }
+  if (!cocoModel) cocoReady.resolve('failed');
 }
 
-async function loadFaceLandmarker() {
+async function importVision() {
+  // Only a dynamic import: a static one would take main.js down when the CDN fails.
+  const { FaceLandmarker, FilesetResolver } = await import(`${VISION_URL}/vision_bundle.mjs`);
+  return { FaceLandmarker, fileset: await FilesetResolver.forVisionTasks(`${VISION_URL}/wasm`) };
+}
+
+async function loadFaceLandmarker(preloadedVision, preloadedModel) {
   try {
-    // Only a dynamic import: a static one would take main.js down when the CDN fails.
-    const { FaceLandmarker, FilesetResolver } = await import(`${VISION_URL}/vision_bundle.mjs`);
-    const fileset = await FilesetResolver.forVisionTasks(`${VISION_URL}/wasm`);
-    const create = (delegate) =>
+    const { FaceLandmarker, fileset } = (await preloadedVision) ?? (await importVision());
+    const buffer = await preloadedModel;
+    const create = (model, delegate) =>
       FaceLandmarker.createFromOptions(fileset, {
-        baseOptions: { modelAssetPath: FACE_MODEL_URL, delegate },
+        baseOptions: { ...model, delegate },
         runningMode: 'VIDEO',
         numFaces: MAX_FACES,
         outputFaceBlendshapes: true,
       });
-    faceLandmarker = await create('GPU').catch(() => create('CPU'));
+    // MediaPipe 0.10.35 keeps the buffer as is, without detaching it, so the CPU retry reuses it.
+    const createAny = (model) => create(model, 'GPU').catch(() => create(model, 'CPU'));
+    const byUrl = () => createAny({ modelAssetPath: FACE_MODEL_URL });
+    faceLandmarker = buffer
+      ? await createAny({ modelAssetBuffer: buffer }).catch((error) => {
+          console.warn('Face Landmarker did not load from the preloaded file', error);
+          return byUrl();
+        })
+      : await byUrl();
   } catch (error) {
     console.warn('Face Landmarker is unavailable', error);
   }
+  if (!faceLandmarker) facesReady.resolve('failed');
 }
 
 // detectForVideo rejects a timestamp that does not grow, and the loop and the tap share it.
@@ -92,6 +124,7 @@ function updateFaces(frame) {
     console.warn('Face Landmarker failed on a frame', error);
   }
   faces = withTracks(found);
+  facesReady.resolve('ready');
 }
 
 function notify() {
@@ -109,6 +142,7 @@ function forgetFaces() {
 const tickCost = createAverage();
 const cocoCost = createAverage();
 let tickCount = 0;
+let cocoWarm = false;
 
 async function tick() {
   const frame = videoFrame(video);
@@ -122,7 +156,10 @@ async function tick() {
   if (tickCount % cocoEvery(cocoCost.get() ?? 0) === 0 && cocoModel) {
     const startedAt = performance.now();
     await updateBodies();
-    cocoCost.add(performance.now() - startedAt);
+    // The first run builds the shaders: counted, it would slow the pace for several ticks.
+    if (cocoWarm) cocoCost.add(performance.now() - startedAt);
+    cocoWarm = true;
+    cocoReady.resolve('ready');
   }
   tickCount += 1;
   updateFaces(frame);
@@ -154,16 +191,19 @@ function isCurrentFrame() {
   return detectionsFrame?.width === video.videoWidth && detectionsFrame?.height === video.videoHeight;
 }
 
-export function startDetection(videoElement) {
+// preloaded: { coco, faces, vision } promises from preload.js, each may give null.
+// Returns { coco, faces }: promises of 'ready' or 'failed'.
+export function startDetection(videoElement, preloaded = {}) {
   video = videoElement;
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) return;
     forgetFaces();
     notify();
   });
-  loadCoco();
-  loadFaceLandmarker();
+  loadCoco(preloaded.coco);
+  loadFaceLandmarker(preloaded.vision, preloaded.faces);
   runLoop();
+  return { coco: cocoReady.promise, faces: facesReady.promise };
 }
 
 // After a rotation the boxes are in the old frame: they would miss the objects and the masks.
