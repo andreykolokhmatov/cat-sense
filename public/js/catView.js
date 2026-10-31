@@ -82,15 +82,28 @@ function setUp(gl) {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
-  gl.uniformMatrix3fv(gl.getUniformLocation(program, 'matrix'), false, columns(CAT_MATRIX));
-  gl.uniform1f(gl.getUniformLocation(program, 'contrast'), CAT_LOOK.contrast);
   gl.uniform3fv(gl.getUniformLocation(program, 'fog'), CAT_LOOK.fogColor);
-  gl.uniform1f(gl.getUniformLocation(program, 'fogAmount'), CAT_LOOK.fogAmount);
   return {
     source: gl.getUniformLocation(program, 'source'),
     texel: gl.getUniformLocation(program, 'texel'),
     lite: gl.getUniformLocation(program, 'lite'),
+    matrix: gl.getUniformLocation(program, 'matrix'),
+    contrast: gl.getUniformLocation(program, 'contrast'),
+    fogAmount: gl.getUniformLocation(program, 'fogAmount'),
   };
+}
+
+const IDENTITY = [
+  [1, 0, 0],
+  [0, 1, 0],
+  [0, 0, 1],
+];
+
+// Plain is the human view: the frame as it is, no blur, no colour change.
+function applyLook(gl, uniforms, plain) {
+  gl.uniformMatrix3fv(uniforms.matrix, false, columns(plain ? IDENTITY : CAT_MATRIX));
+  gl.uniform1f(uniforms.contrast, plain ? 1 : CAT_LOOK.contrast);
+  gl.uniform1f(uniforms.fogAmount, plain ? 0 : CAT_LOOK.fogAmount);
 }
 
 // `scale` is the share of the screen's pixels to draw; 1 means the full ratio of the screen.
@@ -104,16 +117,20 @@ function fitCanvas(canvas, rect, scale) {
   }
 }
 
-// Draws the video through the cat filter once per new camera frame while isOn() is true.
+// Draws the video through the cat filter once per new camera frame while isOn() is true;
+// isPlain() true draws it unfiltered and sharp. The human view goes through here too: the
+// canvas crops the frame itself, while WebKit on some iPhones ignores object-fit: cover on a
+// <video> and letterboxes it.
 // Returns null without WebGL; onFail runs if drawing breaks later, so the caller can fall
 // back to the CSS filter instead of leaving a black canvas over the camera. The same fallback
 // is the last step for a phone that stays slow even with the light filter.
-export function startCatView(canvas, video, { isOn, onFail }) {
+export function startCatView(canvas, video, { isOn, isPlain = () => false, onFail }) {
   const gl = canvas.getContext('webgl', { alpha: false, antialias: false, depth: false });
   if (!gl) return null;
   let uniforms;
   let failed = false;
   let level = 0;
+  let look = null;
   const governor = createGovernor();
   try {
     uniforms = setUp(gl);
@@ -135,6 +152,7 @@ export function startCatView(canvas, video, { isOn, onFail }) {
   canvas.addEventListener('webglcontextrestored', () => {
     try {
       uniforms = setUp(gl);
+      look = null;
     } catch (error) {
       fail(error);
     }
@@ -148,9 +166,15 @@ export function startCatView(canvas, video, { isOn, onFail }) {
     const rect = canvas.getBoundingClientRect();
     const source = visibleSource(rect, frame);
     if (!source) return false;
-    const light = level >= 1 && !full;
+    const plain = isPlain() && !full;
+    const light = plain || (level >= 1 && !full);
     try {
-      fitCanvas(canvas, rect, full ? 1 : RENDER_SCALE[Math.min(level, RENDER_SCALE.length - 1)]);
+      if (look !== plain) {
+        applyLook(gl, uniforms, plain);
+        look = plain;
+      }
+      // The plain view is not blurred, so it needs the screen's own sharpness.
+      fitCanvas(canvas, rect, full || plain ? 1 : RENDER_SCALE[Math.min(level, RENDER_SCALE.length - 1)]);
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, video);
       gl.uniform1f(uniforms.lite, light ? 1 : 0);

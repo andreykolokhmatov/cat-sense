@@ -60,8 +60,10 @@
        an iPhone home-screen app stops updating a video that a canvas covers completely,
        and the cat view froze on the first frame. */
     #catview { display: none; pointer-events: none; }
-    body.is-cat:not(.is-cat-css) #catview { display: block; }
-    body.is-cat:not(.is-cat-css) video { opacity: .01; }
+    /* The human view is drawn by the same canvas, unfiltered: WebKit on some iPhones ignores
+       object-fit: cover on the video and letterboxes it, the canvas crops the frame itself. */
+    body:not(.is-cat-css) #catview { display: block; }
+    body:not(.is-cat-css) video { opacity: .01; }
     /* Without WebGL: CSS cannot fold red into green, so this only hints at cat vision. */
     body.is-cat.is-cat-css video { filter: saturate(.35) contrast(.82) brightness(1.12) blur(2.5px); }
     /* A hold on the camera is the grudge gesture: iOS must not answer it with a callout,

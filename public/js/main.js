@@ -333,7 +333,11 @@ async function handleStart() {
   const ready = startDetection(video, takePreloaded());
   if (!params.has('catcss')) {
     // Hidden under the intro while loading: drawing there would only take time from the models.
-    catView = startCatView(catCanvas, video, { isOn: () => liveCatView() && !loading, onFail: useCssCatVision });
+    catView = startCatView(catCanvas, video, {
+      isOn: () => !document.body.classList.contains('is-cat-css') && !loading,
+      isPlain: () => !document.body.classList.contains('is-cat'),
+      onFail: useCssCatVision,
+    });
     if (!catView) useCssCatVision();
   }
   const { summary } = await runLoading(ready);
