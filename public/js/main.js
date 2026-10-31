@@ -104,7 +104,7 @@ function heroEvent(event, text) {
   }
   document.body.classList.toggle('is-hero', hero.on);
   if (event.type === 'hero') document.dispatchEvent(new CustomEvent('cat:hero', { detail: { text } }));
-  else if (wasOn && !hero.on) document.dispatchEvent(new CustomEvent('cat:hero-off'));
+  else if (wasOn && !hero.on) document.dispatchEvent(new CustomEvent('cat:hero-off', { detail: { after: event.type } }));
 }
 
 // An offended cat never looks at clothes, so a grudge never cuts a torso crop.
