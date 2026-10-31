@@ -35,8 +35,7 @@ const introBubble = document.getElementById('intro-bubble');
 const introImg = document.getElementById('intro-img');
 const debugCrop = document.getElementById('debug-crop');
 const catCanvas = document.getElementById('catview');
-const visionButton = document.getElementById('vision-button');
-const visionLabel = document.getElementById('vision-label');
+const visionButtons = document.querySelectorAll('[data-vision]');
 const infoDialog = document.getElementById('info');
 const params = new URLSearchParams(window.location.search);
 const debug = params.has('debug');
@@ -212,8 +211,7 @@ function listenToTaps() {
 
 function setCatMode(on) {
   document.body.classList.toggle('is-cat', on);
-  visionButton.setAttribute('aria-pressed', String(on));
-  visionLabel.textContent = on ? 'Кошка' : 'Человек';
+  for (const button of visionButtons) button.setAttribute('aria-pressed', String((button.dataset.vision === 'cat') === on));
 }
 
 function liveCatView() {
@@ -248,7 +246,7 @@ function closeOnBackdrop(event) {
 function setUpPanel() {
   // ?catcss forces the plain CSS filter, to compare with the WebGL one on a phone.
   if (params.has('catcss')) useCssCatVision();
-  visionButton.addEventListener('click', () => setCatMode(!document.body.classList.contains('is-cat')));
+  for (const button of visionButtons) button.addEventListener('click', () => setCatMode(button.dataset.vision === 'cat'));
   const soundButton = document.getElementById('sound-button');
   const showSound = () => soundButton.setAttribute('aria-pressed', String(!isMuted()));
   showSound();
