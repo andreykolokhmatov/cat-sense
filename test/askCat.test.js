@@ -169,3 +169,67 @@ test('unknown label uses the fallback phrase', async () => {
   const target = { kind: 'object', label: 'unknown', bbox: [0, 0, 10, 10] };
   assert.deepEqual(await ask(fetchFn, { target }), { text: 'Мяу?', mood: 'curious' });
 });
+
+test('askBody sends a torso for a person without a grudge', () => {
+  assert.deepEqual(askBody(happyPerson, null, { torso: 'xyz' }), { kind: 'person', emotion: 'happy', torso: 'xyz' });
+});
+
+test('askBody never sends a torso with any grudge', () => {
+  for (const grudge of ['start', 'again', 'yes', true, 0]) {
+    assert.equal('torso' in askBody({ ...happyPerson, grudge }, null, { torso: 'xyz' }), false, String(grudge));
+  }
+});
+
+test('askBody ignores an empty or non-string torso and never puts it on an object', () => {
+  for (const torso of ['', null, undefined, 42]) {
+    assert.deepEqual(askBody(happyPerson, null, { torso }), { kind: 'person', emotion: 'happy' });
+  }
+  assert.deepEqual(askBody(cup, 'abc', { torso: 'xyz' }), { kind: 'object', label: 'cup', image: 'abc' });
+});
+
+test('askBody marks every kind of request in the mask with hero: true, and only then', () => {
+  assert.deepEqual(askBody(cup, 'abc', { hero: true }), { kind: 'object', label: 'cup', image: 'abc', hero: true });
+  assert.deepEqual(askBody(happyPerson, null, { hero: true }), { kind: 'person', emotion: 'happy', hero: true });
+  assert.deepEqual(askBody({ ...happyPerson, grudge: 'start' }, null, { hero: true, torso: 'xyz' }), {
+    kind: 'person',
+    emotion: 'happy',
+    grudge: 'start',
+    hero: true,
+  });
+  assert.deepEqual(askBody(happyPerson, null, { hero: true, torso: 'xyz' }), {
+    kind: 'person',
+    emotion: 'happy',
+    torso: 'xyz',
+    hero: true,
+  });
+  for (const hero of [false, undefined, 'true', 1]) {
+    assert.equal('hero' in askBody(cup, 'abc', { hero }), false, String(hero));
+  }
+  assert.equal(askBody(cup, null, { hero: true }), null);
+});
+
+test('askCat sends the torso and the hero flag it was given', async () => {
+  let body;
+  const fetchFn = async (_url, options) => {
+    body = JSON.parse(options.body);
+    return jsonResponse({ text: 'Привет', mood: 'happy' });
+  };
+  await ask(fetchFn, { target: happyPerson, image: 'abc', torso: 'xyz', hero: true });
+  assert.deepEqual(body, { kind: 'person', emotion: 'happy', torso: 'xyz', hero: true });
+  await ask(fetchFn, { target: happyPerson, torso: 'xyz' });
+  assert.deepEqual(body, { kind: 'person', emotion: 'happy', torso: 'xyz' });
+});
+
+test('hero reply keeps hero: true, anything but true is dropped', async () => {
+  const hero = await ask(async () => jsonResponse({ text: 'Маска надета.', mood: 'happy', hero: true, seen: 'лого', sure: 'high' }));
+  assert.deepEqual(hero, { text: 'Маска надета.', mood: 'happy', hero: true });
+  for (const flag of [false, 'true', 1, null]) {
+    const reply = await ask(async () => jsonResponse({ text: 'Мяу', mood: 'happy', hero: flag }));
+    assert.deepEqual(reply, { text: 'Мяу', mood: 'happy' }, String(flag));
+  }
+});
+
+test('a hero reply with a broken text falls back without the mask', async () => {
+  const reply = await ask(async () => jsonResponse({ text: '', mood: 'happy', hero: true }));
+  assert.deepEqual(reply, { text: 'Первая', mood: 'want' });
+});
