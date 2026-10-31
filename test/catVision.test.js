@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  CAT_BRIGHTNESS,
+  CAT_LOOK,
   CAT_MATRIX,
   DEUTERANOPIA,
   applyMatrix,
@@ -19,11 +21,27 @@ function pixel(r, g, b, a = 255) {
   return Array.from(applyMatrix(new Uint8ClampedArray([r, g, b, a]), CAT_MATRIX));
 }
 
-test('every CAT_MATRIX row sums to 1.05, so grey only gets a little lighter', () => {
+test('every CAT_MATRIX row sums to CAT_BRIGHTNESS, so grey only gets a little lighter', () => {
   for (const row of CAT_MATRIX) {
     const sum = row.reduce((a, b) => a + b, 0);
-    assert.ok(Math.abs(sum - 1.05) < 1e-4, `row sum ${sum}`);
+    assert.ok(Math.abs(sum - CAT_BRIGHTNESS) < 1e-4, `row sum ${sum}`);
   }
+});
+
+test('the cat sees most colour as grey: few saturated pixels survive', () => {
+  // Spread of the channels, as a share of the brightest one: 0 is grey, 1 is a pure colour.
+  const spread = ([r, g, b]) => (Math.max(r, g, b) - Math.min(r, g, b)) / Math.max(r, g, b, 1);
+  for (const colour of [[200, 40, 40], [40, 160, 50], [230, 200, 40]]) {
+    const [r, g, b] = pixel(...colour);
+    assert.ok(spread([r, g, b]) < spread(colour) * 0.6, `${colour} -> ${r} ${g} ${b}`);
+  }
+});
+
+test('the haze settings stay in a range that does not wash the picture out', () => {
+  assert.ok(CAT_LOOK.contrast > 0.5 && CAT_LOOK.contrast < 1);
+  assert.ok(CAT_LOOK.fogAmount > 0 && CAT_LOOK.fogAmount < 0.5);
+  assert.equal(CAT_LOOK.fogColor.length, 3);
+  assert.ok(CAT_LOOK.fogColor.every((value) => value > 0.5 && value <= 1));
 });
 
 test('red and green collapse into one tone', () => {
