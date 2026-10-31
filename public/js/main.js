@@ -1,7 +1,7 @@
 import { startCamera } from './camera.js';
 import { startCatView } from './catView.js';
 import { currentLine, lookAt, playMeow, say, think, unlockAudio } from './cat.js';
-import { faceTracks, getDetections, markGrudge, modelStatus, onDetections, startDetection } from './detect.js';
+import { detectStats, faceTracks, getDetections, markGrudge, modelStatus, onDetections, startDetection } from './detect.js';
 import { drawDevBoxes, initDevMode, isDev, logAsk, logReply, trackedFetch } from './devMode.js';
 import { askCat } from './logic/askCat.js';
 import { screenToVideo, videoFrame } from './logic/coverMap.js';
@@ -73,7 +73,8 @@ function redrawMarks() {
 function redrawDev() {
   if (!isDev()) return;
   const { width, height } = video.getBoundingClientRect();
-  drawDevBoxes(getDetections(), modelStatus(), { width, height }, videoFrame(video));
+  const status = { ...modelStatus(), ...detectStats(), cat: liveCatView() ? catView?.stats() : null };
+  drawDevBoxes(getDetections(), status, { width, height }, videoFrame(video));
 }
 
 function showDebugCrop(image) {
@@ -189,7 +190,7 @@ function handleSave() {
   const { text, img } = currentLine();
   const catMode = document.body.classList.contains('is-cat');
   // Drawn again right here: a WebGL canvas is only readable in the task that drew it.
-  const fresh = liveCatView() && catView?.render() ? catCanvas : null;
+  const fresh = liveCatView() && catView?.render({ full: true }) ? catCanvas : null;
   try {
     saveFrame({ video, view: { width, height }, catMode, catCanvas: fresh, catImg: img, text });
   } catch (error) {

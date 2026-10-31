@@ -1,5 +1,5 @@
 import { videoToScreen } from './logic/coverMap.js';
-import { askOutcome, describeTarget, formatSeconds } from './logic/devLog.js';
+import { askOutcome, describeTarget, formatSeconds, perfLine } from './logic/devLog.js';
 import { EMOTION_LABELS } from './logic/labels.js';
 
 // Developer mode, switched by a tap on the team name: boxes of what the phone found, the crop
@@ -119,7 +119,7 @@ export function drawDevBoxes(detections, status, view, frame) {
     if (box) drawBox(context, box, COLORS.crop, 'вырезка → Gemini');
   }
   const mark = (ready) => (ready ? '✓' : '✗');
-  statusLine.textContent = `COCO ${mark(status.coco)} · лица ${mark(status.faces)} · тел ${bodies} · лиц ${faces}`;
+  statusLine.textContent = `COCO ${mark(status.coco)} · лица ${mark(status.faces)} · тел ${bodies} · лиц ${faces}\n${perfLine(status)}`;
 }
 
 function row(kind, title, text) {

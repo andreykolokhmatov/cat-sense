@@ -1,5 +1,6 @@
 import { videoFrame } from './logic/coverMap.js';
 import { bodyDetections, faceDetections } from './logic/detections.js';
+import { cocoEvery, createAverage, nextPause } from './logic/perf.js';
 import { createTracker } from './logic/tracker.js';
 
 const VISION_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35';
@@ -104,12 +105,26 @@ function forgetFaces() {
   faces = faces.map((face) => ({ ...face, track: null, grudged: false }));
 }
 
+// How long a whole tick and the COCO part of it take on this phone, to pace the loop.
+const tickCost = createAverage();
+const cocoCost = createAverage();
+let tickCount = 0;
+
 async function tick() {
   const frame = videoFrame(video);
   if (detectionsFrame && (detectionsFrame.width !== frame.width || detectionsFrame.height !== frame.height)) {
     forgetFaces();
+    // The old boxes are in another frame; fetch new ones now, not on the next scheduled tick.
+    bodies = [];
+    tickCount = 0;
   }
-  await updateBodies();
+  // The heavy model runs on every n-th tick, the face model on every one.
+  if (tickCount % cocoEvery(cocoCost.get() ?? 0) === 0 && cocoModel) {
+    const startedAt = performance.now();
+    await updateBodies();
+    cocoCost.add(performance.now() - startedAt);
+  }
+  tickCount += 1;
   updateFaces(frame);
   detectionsFrame = frame;
   notify();
@@ -122,9 +137,17 @@ function pause(ms) {
 async function runLoop() {
   for (;;) {
     const startedAt = performance.now();
-    if (!document.hidden && video.readyState >= HAVE_CURRENT_DATA) await tick();
-    await pause(Math.max(0, LOOP_MS - (performance.now() - startedAt)));
+    if (!document.hidden && video.readyState >= HAVE_CURRENT_DATA) {
+      await tick();
+      tickCost.add(performance.now() - startedAt);
+    }
+    await pause(nextPause(LOOP_MS, performance.now() - startedAt));
   }
+}
+
+// For the developer mode.
+export function detectStats() {
+  return { tickMs: tickCost.get(), cocoMs: cocoCost.get(), cocoEvery: cocoEvery(cocoCost.get() ?? 0) };
 }
 
 function isCurrentFrame() {

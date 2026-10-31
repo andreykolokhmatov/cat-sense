@@ -1,5 +1,8 @@
+// Every camera frame is uploaded to the GPU, copied for the models and cropped for Gemini, and
+// the filter blurs it anyway: 960x540 has a third fewer pixels than 720p, which an older phone
+// feels at once, and a tapped object is still sharp enough for Gemini.
 const CONSTRAINTS = {
-  video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+  video: { facingMode: { ideal: 'environment' }, width: { ideal: 960 }, height: { ideal: 540 } },
   audio: false,
 };
 const UNSUPPORTED_MESSAGE = 'Камера здесь не работает. Нужен HTTPS и браузер с камерой.';
