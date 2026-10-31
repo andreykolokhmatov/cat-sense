@@ -3,6 +3,14 @@ import { MOODS } from '../public/js/logic/pickPhrase.js';
 import { LOGO_JPEG_BASE64 } from './_logo.js';
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
+// A paid reseller of the same API (ProxyAPI: https://api.proxyapi.ru/google/v1beta/models)
+// takes the very same request and only wants its key as a Bearer token.
+function geminiCall(env, model) {
+  const base = env.GEMINI_BASE_URL || GEMINI_URL;
+  const key = { 'x-goog-api-key': env.GEMINI_API_KEY };
+  const auth = env.GEMINI_BASE_URL ? { Authorization: `Bearer ${env.GEMINI_API_KEY}` } : key;
+  return { url: `${base.replace(/\/+$/, '')}/${encodeURIComponent(model)}:generateContent`, auth };
+}
 const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 // The phone gives up after 9.5 s and the upload eats part of that, so the model gets less.
 // Flash-Lite under load often needs 5-7 s; a real reply is worth the wait behind the dots.
@@ -257,9 +265,10 @@ export function createHandler({
     const model = env.GEMINI_MODEL || DEFAULT_MODEL;
 
     try {
-      const response = await fetchFn(`${GEMINI_URL}/${encodeURIComponent(model)}:generateContent`, {
+      const { url, auth } = geminiCall(env, model);
+      const response = await fetchFn(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        headers: { 'Content-Type': 'application/json', ...auth },
         body: JSON.stringify(geminiRequest(ask, model, env.GEMINI_THINKING)),
         signal: AbortSignal.timeout(timeoutMs),
       });

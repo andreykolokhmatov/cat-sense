@@ -359,6 +359,16 @@ test('handler returns the model reply and keeps the key out of the URL', async (
   assert.equal(calls[0].options.headers['x-goog-api-key'], 'test-key');
 });
 
+test('with GEMINI_BASE_URL the same request goes to the proxy with a Bearer key', async () => {
+  const calls = [];
+  const proxyEnv = { ...env, GEMINI_BASE_URL: 'https://api.proxyapi.ru/google/v1beta/models/' };
+  const handler = createHandler({ fetchFn: okFetch({ text: 'Мур', mood: 'happy' }, calls), env: proxyEnv });
+  assert.equal((await call(handler, cupAsk)).statusCode, 200);
+  assert.equal(calls[0].url, 'https://api.proxyapi.ru/google/v1beta/models/gemini-3.5-flash-lite:generateContent');
+  assert.equal(calls[0].options.headers.Authorization, 'Bearer test-key');
+  assert.equal(calls[0].options.headers['x-goog-api-key'], undefined);
+});
+
 test('handler uses GEMINI_MODEL when set', async () => {
   const calls = [];
   const handler = createHandler({ fetchFn: okFetch({ text: 'Мур', mood: 'happy' }, calls), env: { ...env, GEMINI_MODEL: 'gemini-3.5-flash' } });
