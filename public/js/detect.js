@@ -2,12 +2,17 @@ import { videoFrame } from './logic/coverMap.js';
 import { bodyDetections, faceDetections } from './logic/detections.js';
 import { cocoEvery, createAverage, nextPause } from './logic/perf.js';
 import { createTracker } from './logic/tracker.js';
+import { withTimeout } from './logic/withTimeout.js';
 import { FACE_MODEL_URL, VISION_URL, pageLoaded } from './preload.js';
 
 const LOOP_MS = 250;
 // The default is 1, which would leave a second face in the frame without a privacy mask.
 const MAX_FACES = 5;
 const HAVE_CURRENT_DATA = 2;
+// A preloaded part that never answers must not keep its model from loading: after this the
+// model loads by its URL. Longer than the loading screen, so a slow but moving download is
+// not fetched twice while the visitor still waits.
+const PRELOAD_WAIT_MS = 30000;
 
 let video = null;
 let cocoModel = null;
@@ -200,8 +205,9 @@ export function startDetection(videoElement, preloaded = {}) {
     forgetFaces();
     notify();
   });
-  loadCoco(preloaded.coco);
-  loadFaceLandmarker(preloaded.vision, preloaded.faces);
+  const bounded = (part) => withTimeout(part, PRELOAD_WAIT_MS, null);
+  loadCoco(bounded(preloaded.coco));
+  loadFaceLandmarker(bounded(preloaded.vision), bounded(preloaded.faces));
   runLoop();
   return { coco: cocoReady.promise, faces: facesReady.promise };
 }

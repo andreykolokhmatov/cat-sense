@@ -15,9 +15,12 @@ export const DOWNLOADS = [
   { id: 'face-model', expectedBytes: 3_758_596 },
   { id: 'vision-wasm', expectedBytes: 2_987_039 },
 ];
-// A download that stops without an error would keep its model from loading at all; aborted,
+// A download that stops without an error would keep its model from loading at all; given up,
 // it falls back to the old path, which makes a fresh request.
 const STALL_MS = 15000;
+// All announced bytes are in but the end of the stream is not: WebKit may hold it back.
+const EOF_GRACE_MS = 2000;
+const STALL = Symbol('stall');
 
 const state = new Map(DOWNLOADS.map(({ id }) => [id, { loaded: 0, total: null, done: false, failed: false }]));
 const listeners = new Set();
@@ -51,27 +54,71 @@ function contentLength(response) {
   return length > 0 ? length : null;
 }
 
+function nextTask() {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 // A fetch that reports every chunk and gives back a complete Response, as tfjs expects.
-async function countedFetch(url, { onBytes = () => {}, onTotal = () => {} } = {}, init = {}) {
+// The watchdog races every await instead of trusting abort(): a body stream that ignores the
+// abort would otherwise keep the read pending forever.
+export async function countedFetch(
+  url,
+  { onBytes = () => {}, onTotal = () => {}, stallMs = STALL_MS, graceMs = EOF_GRACE_MS } = {},
+  init = {},
+) {
   const controller = new AbortController();
   let timer;
+  let stalled = false;
+  let total = null;
+  let received = 0;
+  let wake;
+  const stall = new Promise((resolve) => {
+    wake = resolve;
+  });
+  // Exactly the announced length, not more: a compressed body may pass its length mid-stream.
   const watch = () => {
     clearTimeout(timer);
-    timer = setTimeout(() => controller.abort(), STALL_MS);
+    const ms = total && received === total ? graceMs : stallMs;
+    timer = setTimeout(() => {
+      stalled = true;
+      wake(STALL);
+      controller.abort();
+    }, ms);
   };
   watch();
   try {
-    const response = await fetch(url, { ...init, signal: controller.signal });
+    const response = await Promise.race([fetch(url, { ...init, signal: controller.signal }), stall]);
+    if (response === STALL) throw new Error(`Download stalled: ${url}`);
     if (!response.ok || !response.body) return response;
-    const total = contentLength(response);
+    total = contentLength(response);
     if (total) onTotal(total);
     const reader = response.body.getReader();
     const chunks = [];
     for (;;) {
-      const { done, value } = await reader.read();
+      let result;
+      try {
+        result = await Promise.race([reader.read(), stall]);
+      } catch (error) {
+        if (!stalled) throw error;
+        result = STALL;
+      }
+      // A read that was ready at once wins the race even after the watchdog went off.
+      if (stalled || result === STALL) {
+        reader.cancel().catch(() => {});
+        if (total && received === total) break;
+        throw new Error(`Download stalled: ${url}`);
+      }
+      const { done, value } = result;
       if (done) break;
-      watch();
+      // An empty chunk is no progress, and a stream of them would resolve each read as a
+      // microtask: timers, taps and drawing would never run again.
+      if (!value.byteLength) {
+        await nextTask();
+        continue;
+      }
       chunks.push(value);
+      received += value.byteLength;
+      watch();
       onBytes(value.byteLength);
     }
     return new Response(new Blob(chunks), { status: response.status, statusText: response.statusText });
