@@ -28,6 +28,14 @@ export const CAT_MATRIX = scale(multiply(saturationMatrix(0.7), DEUTERANOPIA), 1
 export const CAT_BLUR_PX = 2;
 // Darkening at the frame edges, 0..1: a hint that the cat looks at the centre.
 export const CAT_VIGNETTE = 0.35;
+// A cat's eye gathers several times more light than ours. 0..1: how far the shadows are
+// lifted; bright parts stay as they are. Starting value, tune it on the phone in a dim room.
+export const CAT_NIGHT = 0.85;
+// Cats notice movement far better than detail. The frame is compared with one from
+// `lagMs` ago; what changed by more than `threshold` (0..1, in colour distance) glows yellow.
+// At 0.08 / 0.7 a webcam in a dim room lit up the whole outline of a person who barely moved:
+// now only clear movement glows, and softer.
+export const CAT_MOTION = { strength: 0.45, threshold: 0.16, lagMs: 150 };
 
 // Edits RGBA pixels in place. Uint8ClampedArray clamps every write to 0..255; alpha is kept.
 export function applyMatrix(rgba, m) {
