@@ -16,7 +16,6 @@ function make(overrides = {}) {
     ],
     downloadShare: 0.6,
     maxMs: 25000,
-    skipAfterMs: 8000,
     startedAt: 1000,
     ...overrides,
   });
@@ -120,15 +119,6 @@ test('the deadline ends the loading and names what it did not wait for', () => {
   assert.ok(loading.progress(26000) < 1);
 });
 
-test('the skip button appears after its time and only while still loading', () => {
-  const loading = make();
-  assert.equal(loading.canSkip(8999), false);
-  assert.equal(loading.canSkip(9000), true);
-  loading.finish('coco', 9100);
-  loading.finish('faces', 9100);
-  assert.equal(loading.canSkip(9200), false);
-});
-
 test('phase follows the downloads, then the stages in order', () => {
   const loading = make();
   assert.equal(loading.phase(), 'download');
@@ -158,7 +148,6 @@ test('summaryLine lists time, bytes before the tap, stages and what was not wait
       { id: 'extra', label: 'ещё', expectedMs: 1000 },
     ],
     maxMs: 25000,
-    skipAfterMs: 8000,
     startedAt: 1000,
   });
   loading.finish('coco-model', 3000);

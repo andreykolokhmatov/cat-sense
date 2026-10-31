@@ -13,7 +13,7 @@ function mb(bytes) {
   return (bytes / MB).toFixed(1);
 }
 
-export function createLoading({ downloads = [], stages = [], downloadShare = 0.6, maxMs, skipAfterMs, startedAt = 0 }) {
+export function createLoading({ downloads = [], stages = [], downloadShare = 0.6, maxMs, startedAt = 0 }) {
   const files = new Map(
     downloads.map(({ id, expectedBytes, loaded = 0, total = null, done = false, failed = false }) => [
       id,
@@ -106,9 +106,6 @@ export function createLoading({ downloads = [], stages = [], downloadShare = 0.6
       return shown;
     },
     done,
-    canSkip(now) {
-      return !done(now) && now - startedAt >= skipAfterMs;
-    },
     waitingFor() {
       return waiting().map(([id]) => id);
     },

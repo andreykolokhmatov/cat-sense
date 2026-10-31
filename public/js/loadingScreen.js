@@ -6,7 +6,6 @@ import { downloadState, onDownload } from './preload.js';
 
 // Starting values until the measurement on the iPhone (plan step 7).
 const LOADER_MAX_MS = 25000;
-const SKIP_AFTER_MS = 8000;
 const DOWNLOAD_SHARE = 0.6;
 // The bar is redrawn on a timer: rAF stops while the main thread is busy, the timer catches up.
 const FRAME_MS = 100;
@@ -28,10 +27,9 @@ const bubble = document.getElementById('intro-bubble');
 const bar = document.getElementById('loading-bar');
 const fill = document.getElementById('loading-fill');
 const mbLine = document.getElementById('loading-mb');
-const skipButton = document.getElementById('loading-skip');
 
 // ready: { coco, faces } promises of 'ready' or 'failed' from startDetection. Resolves with
-// { skipped, summary } when both answered, the deadline passed or the visitor skipped.
+// { summary } when both answered or the deadline passed.
 export function runLoading(ready) {
   const startedAt = performance.now();
   const files = downloadState();
@@ -40,7 +38,6 @@ export function runLoading(ready) {
     stages: STAGES,
     downloadShare: DOWNLOAD_SHARE,
     maxMs: LOADER_MAX_MS,
-    skipAfterMs: SKIP_AFTER_MS,
     startedAt,
   });
   const arrived = new Set(files.filter(({ done }) => done).map(({ id }) => id));
@@ -71,20 +68,14 @@ export function runLoading(ready) {
     let timer = null;
     let deadline = null;
 
-    function end(skipped) {
+    function end() {
       if (finished) return;
       finished = true;
       clearInterval(timer);
       clearTimeout(deadline);
       stopListening();
-      skipButton.removeEventListener('click', onSkip);
-      skipButton.classList.remove('is-shown');
       intro.classList.remove('is-loading');
-      resolve({ skipped, summary: loading.summaryLine(performance.now()) });
-    }
-
-    function onSkip() {
-      end(true);
+      resolve({ summary: loading.summaryLine(performance.now()) });
     }
 
     function draw() {
@@ -99,14 +90,12 @@ export function runLoading(ready) {
         line = next;
         bubble.textContent = line;
       }
-      skipButton.classList.toggle('is-shown', loading.canSkip(now));
-      if (loading.done(now)) end(false);
+      if (loading.done(now)) end();
     }
 
-    skipButton.addEventListener('click', onSkip);
     timer = setInterval(draw, FRAME_MS);
     // Its own timer as well: the deadline must not depend on the redraw running.
-    deadline = setTimeout(() => end(false), LOADER_MAX_MS);
+    deadline = setTimeout(end, LOADER_MAX_MS);
     draw();
   });
 }

@@ -181,11 +181,6 @@
     .loading-shine { position: absolute; top: 0; bottom: 0; left: 0; width: 40%; background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, .5), rgba(255, 255, 255, 0)); transform: translateX(-100%); animation: shine 1.4s linear infinite; will-change: transform; }
     @keyframes shine { to { transform: translateX(250%); } }
     #loading-mb { min-height: 1.4em; font-size: var(--fs-caption); color: var(--text-2); font-variant-numeric: tabular-nums; }
-    /* Invisible, not removed, until it is due: the layout does not jump when it appears. */
-    #loading-skip { padding: 12px 20px; border: 0; border-radius: 999px; background: var(--fill); color: var(--text); box-shadow: var(--stroke); font: inherit; font-size: var(--fs-sub); font-weight: 700; transition: transform .1s, background-color .2s; }
-    #loading-skip:not(.is-shown) { visibility: hidden; }
-    #loading-skip:active { transform: scale(.96); background: var(--fill-pressed); }
-    #loading-skip:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
     @media (prefers-reduced-motion: reduce) { .loading-shine { animation: none; opacity: 0; } #loading-fill { transition: none; } }
     /* A night sky: the orange cat stands out against it, and cats see best at night anyway. */
     #intro { overflow: hidden; background: radial-gradient(ellipse at 50% 30%, #3d1f5c 0%, #1d1030 48%, var(--night-0) 100%); }
@@ -282,7 +277,6 @@
         <div class="loading-shine"></div>
       </div>
       <div id="loading-mb"></div>
-      <button id="loading-skip" type="button">Начать без ожидания</button>
     </div>
     <p>Тапни по предмету или человеку, и кот скажет, что думает.</p>
     <footer class="credit">Сделано командой <button id="dev-toggle" type="button" aria-label="BugBusters, режим разработчика">BugBusters</button></footer>
