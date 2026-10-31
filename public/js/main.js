@@ -1,7 +1,7 @@
 import { startCamera } from './camera.js';
 import { startCatView } from './catView.js';
 import { currentLine, lookAt, playMeow, say, think, unlockAudio } from './cat.js';
-import { faceTracks, getDetections, markGrudge, modelStatus, onDetections, startDetection } from './detect.js';
+import { detectStats, faceTracks, getDetections, markGrudge, modelStatus, onDetections, startDetection } from './detect.js';
 import { drawDevBoxes, initDevMode, isDev, logAsk, logReply, trackedFetch } from './devMode.js';
 import { askCat } from './logic/askCat.js';
 import { screenToVideo, videoFrame } from './logic/coverMap.js';
@@ -11,9 +11,11 @@ import { pickTarget } from './logic/pickTarget.js';
 import { drawMarks } from './marks.js';
 import { saveFrame } from './saveFrame.js';
 import { snapshot } from './snapshot.js';
+import { startWarmup } from './warmup.js';
 
-// A fallback phrase comes back instantly; without a pause the dots would only flicker.
-const MIN_THINK_MS = 700;
+// A fallback phrase comes back instantly; without a pause the dots would only flicker. A real
+// answer takes longer than this anyway, so it never adds to a model reply.
+const MIN_THINK_MS = 400;
 // A slow or missing cat picture must not keep the intro bubble hidden for long.
 const INTRO_WAIT_MS = 1500;
 // Starting values for the hold that makes the cat take offence; tune them on the iPhone.
@@ -73,7 +75,8 @@ function redrawMarks() {
 function redrawDev() {
   if (!isDev()) return;
   const { width, height } = video.getBoundingClientRect();
-  drawDevBoxes(getDetections(), modelStatus(), { width, height }, videoFrame(video));
+  const status = { ...modelStatus(), ...detectStats(), cat: liveCatView() ? catView?.stats() : null };
+  drawDevBoxes(getDetections(), status, { width, height }, videoFrame(video));
 }
 
 function showDebugCrop(image) {
@@ -87,16 +90,18 @@ function targetAt(tap) {
 
 async function respond(target, point) {
   busy = true;
+  const tappedAt = performance.now();
   lookAt(point.x, point.y);
   think();
   const image = target.kind === 'object' ? snapshot(video, target) : null;
+  const snapMs = performance.now() - tappedAt;
   if (debug && image) showDebugCrop(image);
   const devEntry = logAsk(target, image);
   redrawDev();
 
   const ask = askCat({ target, image, phrases, lastText, ...(devEntry && { fetchFn: trackedFetch(devEntry) }) });
   const [{ text, mood }] = await Promise.all([ask, pause(MIN_THINK_MS)]);
-  logReply(devEntry, { text, mood });
+  logReply(devEntry, { text, mood }, { snapMs: image ? snapMs : undefined, totalMs: performance.now() - tappedAt });
   // The model picks a mood by the words; an offended cat must look offended whatever it said.
   say(text, target.grudge ? 'grudge' : mood);
   playMeow();
@@ -189,7 +194,7 @@ function handleSave() {
   const { text, img } = currentLine();
   const catMode = document.body.classList.contains('is-cat');
   // Drawn again right here: a WebGL canvas is only readable in the task that drew it.
-  const fresh = liveCatView() && catView?.render() ? catCanvas : null;
+  const fresh = liveCatView() && catView?.render({ full: true }) ? catCanvas : null;
   try {
     saveFrame({ video, view: { width, height }, catMode, catCanvas: fresh, catImg: img, text });
   } catch (error) {
@@ -234,6 +239,7 @@ async function handleStart() {
   intro.hidden = true;
   document.body.classList.remove('is-intro');
   say('Мяу! Тапни по чему-нибудь.', 'happy');
+  startWarmup();
   startDetection(video);
   if (!params.has('catcss')) {
     catView = startCatView(catCanvas, video, { isOn: liveCatView, onFail: useCssCatVision });

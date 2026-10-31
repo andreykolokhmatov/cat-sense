@@ -1,4 +1,5 @@
 import { EMOTION_LABELS } from './labels.js';
+import { QUALITY_NAMES } from './perf.js';
 
 // What the developer log says about one tap: what went to Gemini and how it ended.
 // No DOM here, so the wording and the outcome rules are covered by tests.
@@ -50,4 +51,24 @@ export function askOutcome(call, reply) {
 
 export function formatSeconds(ms) {
   return `${(ms / 1000).toFixed(1)} с`;
+}
+
+// Where the time of one tap went: cutting the crop on the phone, the round trip to the model,
+// and the whole way from the finger to the text in the bubble. A missing figure is skipped.
+export function phasesLine({ snapMs, askMs, totalMs } = {}) {
+  const parts = [];
+  if (typeof snapMs === 'number') parts.push(`вырезка ${formatSeconds(snapMs)}`);
+  if (typeof askMs === 'number') parts.push(`запрос ${formatSeconds(askMs)}`);
+  if (typeof totalMs === 'number') parts.push(`от тапа до текста ${formatSeconds(totalMs)}`);
+  return parts.join(' · ');
+}
+
+const dash = (value, format) => (typeof value === 'number' ? format(value) : '—');
+
+// One line of speed figures for the status bar: how smooth the cat view runs, at which quality
+// level, and what a detection tick costs on this phone.
+export function perfLine({ cat, tickMs, cocoMs, cocoEvery } = {}) {
+  const view = cat ? `${dash(cat.fps, (fps) => `${Math.round(fps)} к/с`)} (${QUALITY_NAMES[cat.level] ?? cat.level})` : 'выкл';
+  const coco = dash(cocoMs, (ms) => `${Math.round(ms)} мс${cocoEvery > 1 ? ` каждый ${cocoEvery}-й` : ''}`);
+  return `зрение ${view} · тик ${dash(tickMs, (ms) => `${Math.round(ms)} мс`)} · COCO ${coco}`;
 }

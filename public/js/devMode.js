@@ -1,5 +1,5 @@
 import { videoToScreen } from './logic/coverMap.js';
-import { askOutcome, describeTarget, formatSeconds } from './logic/devLog.js';
+import { askOutcome, describeTarget, formatSeconds, perfLine, phasesLine } from './logic/devLog.js';
 import { EMOTION_LABELS } from './logic/labels.js';
 
 // Developer mode, switched by a tap on the team name: boxes of what the phone found, the crop
@@ -119,10 +119,10 @@ export function drawDevBoxes(detections, status, view, frame) {
     if (box) drawBox(context, box, COLORS.crop, 'вырезка → Gemini');
   }
   const mark = (ready) => (ready ? '✓' : '✗');
-  statusLine.textContent = `COCO ${mark(status.coco)} · лица ${mark(status.faces)} · тел ${bodies} · лиц ${faces}`;
+  statusLine.textContent = `COCO ${mark(status.coco)} · лица ${mark(status.faces)} · тел ${bodies} · лиц ${faces}\n${perfLine(status)}`;
 }
 
-function row(kind, title, text) {
+function row(kind, title, text, detail) {
   const item = document.createElement('div');
   item.className = `dev-row dev-${kind}`;
   const head = document.createElement('div');
@@ -133,6 +133,12 @@ function row(kind, title, text) {
     const body = document.createElement('div');
     body.textContent = text;
     item.append(body);
+  }
+  if (detail) {
+    const note = document.createElement('div');
+    note.className = 'dev-detail';
+    note.textContent = detail;
+    item.append(note);
   }
   log.append(item);
   while (log.children.length > MAX_ENTRIES * 2) log.firstElementChild.remove();
@@ -179,14 +185,16 @@ export function trackedFetch(entry) {
   };
 }
 
-export async function logReply(entry, reply) {
+// `timing`: { snapMs, totalMs } measured in main.js, around the crop and the whole tap.
+export async function logReply(entry, reply, timing = {}) {
   if (!entry) return;
   const { call } = entry;
   if (call.rawRead) await Promise.race([call.rawRead, new Promise((resolve) => setTimeout(resolve, RAW_WAIT_MS))]);
   const outcome = askOutcome(call, reply);
-  const took = call.sentAt ? formatSeconds((call.doneAt ?? performance.now()) - call.sentAt) : '';
+  const askMs = call.sentAt ? (call.doneAt ?? performance.now()) - call.sentAt : undefined;
+  const took = askMs === undefined ? '' : formatSeconds(askMs);
   const title = outcome.ok
     ? `Gemini · ${took} · ${outcome.mood}`
     : `Запасная фраза · ${outcome.reason}${took ? ` · ${took}` : ''}`;
-  row(outcome.ok ? 'gemini' : 'fallback', title, reply.text);
+  row(outcome.ok ? 'gemini' : 'fallback', title, reply.text, phasesLine({ ...timing, askMs }));
 }

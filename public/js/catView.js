@@ -1,9 +1,14 @@
 import { CAT_BLUR_PX, CAT_MATRIX, CAT_MOTION, CAT_NIGHT, CAT_VIGNETTE } from './logic/catVision.js';
 import { videoFrame, visibleSource } from './logic/coverMap.js';
+import { QUALITY_NAMES, createGovernor } from './logic/perf.js';
 
 // The live filter is drawn with WebGL because WebKit on iPhone ignores an SVG filter on
 // <video>: the colour matrix silently did nothing there, only the blur showed.
 const MAX_PIXEL_RATIO = 2;
+// The picture is blurred on purpose, so it is drawn at a fraction of the screen's pixels and
+// the browser stretches it: a full-resolution blur costs a phone 10x the fill for nothing.
+// Level 0 is the full filter, level 1 the light one for a phone that cannot keep up.
+const RENDER_SCALE = [0.6, 0.4];
 const HAVE_CURRENT_DATA = 2;
 const PLAY_RETRY_MS = 1000;
 // A reference older than this is from before a pause, and comparing with it would glow everywhere.
@@ -37,6 +42,7 @@ uniform float night;
 uniform float motion;
 uniform float threshold;
 uniform vec2 seed;
+uniform float lite;
 varying vec2 uv;
 varying vec2 unit;
 vec3 blur3(sampler2D image) {
@@ -48,6 +54,14 @@ vec3 blur3(sampler2D image) {
 }
 float noise(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 void main() {
+  // The light filter: colour matrix and vignette from one texture read. The blur comes from
+  // the low render resolution being stretched.
+  if (lite > 0.5) {
+    vec3 plain = clamp(matrix * texture2D(frame, uv).rgb, 0.0, 1.0);
+    plain *= 1.0 - vignette * smoothstep(0.35, 0.75, distance(unit, vec2(0.5)));
+    gl_FragColor = vec4(plain, 1.0);
+    return;
+  }
   vec3 now = blur3(frame);
   vec3 color = clamp(matrix * now, 0.0, 1.0);
 
@@ -117,28 +131,33 @@ function setUp(gl) {
     source: gl.getUniformLocation(program, 'source'),
     texel: gl.getUniformLocation(program, 'texel'),
     seed: gl.getUniformLocation(program, 'seed'),
+    lite: gl.getUniformLocation(program, 'lite'),
     textures,
   };
 }
 
-function fitCanvas(canvas, rect) {
-  const ratio = Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO);
-  const width = Math.round(rect.width * ratio);
-  const height = Math.round(rect.height * ratio);
+// `scale` is the share of the screen's pixels to draw; 1 means the full ratio of the screen.
+function fitCanvas(canvas, rect, scale) {
+  const ratio = scale === 1 ? Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO) : scale;
+  const width = Math.max(1, Math.round(rect.width * ratio));
+  const height = Math.max(1, Math.round(rect.height * ratio));
   if (canvas.width !== width || canvas.height !== height) {
     canvas.width = width;
     canvas.height = height;
   }
 }
 
-// Draws the video through the cat filter on every animation frame while isOn() is true.
+// Draws the video through the cat filter once per new camera frame while isOn() is true.
 // Returns null without WebGL; onFail runs if drawing breaks later, so the caller can fall
-// back to the CSS filter instead of leaving a black canvas over the camera.
+// back to the CSS filter instead of leaving a black canvas over the camera. The same fallback
+// is the last step for a phone that stays slow even with the light filter.
 export function startCatView(canvas, video, { isOn, onFail }) {
   const gl = canvas.getContext('webgl', { alpha: false, antialias: false, depth: false });
   if (!gl) return null;
   let uniforms;
   let failed = false;
+  let level = 0;
+  const governor = createGovernor();
   try {
     uniforms = setUp(gl);
   } catch (error) {
@@ -178,20 +197,23 @@ export function startCatView(canvas, video, { isOn, onFail }) {
     hasReference = true;
   }
 
-  // Returns true when the canvas holds the current frame.
-  function render() {
+  // Returns true when the canvas holds the current frame. `full` draws at the screen's own
+  // resolution with the full filter: the saved photo is made from this canvas.
+  function render({ full = false } = {}) {
     if (failed || gl.isContextLost() || video.readyState < HAVE_CURRENT_DATA) return false;
     const frame = videoFrame(video);
     const rect = canvas.getBoundingClientRect();
     const source = visibleSource(rect, frame);
     if (!source) return false;
+    const light = level >= 1 && !full;
     try {
-      fitCanvas(canvas, rect);
+      fitCanvas(canvas, rect, full ? 1 : RENDER_SCALE[Math.min(level, RENDER_SCALE.length - 1)]);
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.activeTexture(gl.TEXTURE0);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, video);
       const now = performance.now();
-      if (!hasReference || now - referenceAt > STALE_REFERENCE_MS) uploadReference(now);
+      gl.uniform1f(uniforms.lite, light ? 1 : 0);
+      if (!light && (!hasReference || now - referenceAt > STALE_REFERENCE_MS)) uploadReference(now);
       gl.uniform2f(uniforms.seed, Math.random(), Math.random());
       gl.uniform4f(uniforms.source, source.sx / frame.width, source.sy / frame.height, source.sw / frame.width, source.sh / frame.height);
       // One CSS pixel on screen covers sw / rect.width video pixels.
@@ -199,7 +221,7 @@ export function startCatView(canvas, video, { isOn, onFail }) {
       gl.uniform2f(uniforms.texel, step / frame.width, step / frame.height);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       // After the draw: this frame becomes the reference only for the frames that follow.
-      if (now - referenceAt >= CAT_MOTION.lagMs) uploadReference(now);
+      if (!light && now - referenceAt >= CAT_MOTION.lagMs) uploadReference(now);
       return true;
     } catch (error) {
       fail(error);
@@ -215,14 +237,36 @@ export function startCatView(canvas, video, { isOn, onFail }) {
     video.play().catch(() => {});
   }
 
+  // The screen refreshes 60 times a second, the camera delivers 30 or fewer: drawing the same
+  // camera frame twice only costs a texture upload and a full-screen pass.
+  let lastVideoTime = null;
+  function newCameraFrame() {
+    const time = video.currentTime;
+    // A source without a clock (not a real video) is drawn every time.
+    if (typeof time !== 'number' || time !== lastVideoTime) {
+      lastVideoTime = time;
+      return true;
+    }
+    return false;
+  }
+
+  function stepDown(next) {
+    level = next;
+    console.warn(`Cat view is slow, quality: ${QUALITY_NAMES[next]}`);
+    // The last step leaves WebGL: the plain CSS filter is cheaper for the compositor.
+    if (next >= RENDER_SCALE.length) fail(new Error('too slow even with the light filter'));
+  }
+
   function loop(now) {
     if (failed) return;
     if (isOn() && !document.hidden) {
       keepPlaying(now);
-      render();
+      const dropped = governor.frame(now);
+      if (dropped !== null) stepDown(dropped);
+      if (!failed && newCameraFrame()) render();
     }
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
-  return { render };
+  return { render, stats: () => ({ fps: governor.fps, level }) };
 }
