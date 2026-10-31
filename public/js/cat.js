@@ -1,3 +1,13 @@
+import { dbToGain, pickSound, soundNames, soundPath } from './logic/sounds.js';
+
+// Below the cat's voice is room rumble, above it the hiss of a cheap microphone.
+const VOICE_BAND_HZ = { low: 180, high: 7000 };
+// Quiet enough not to startle a visitor holding the phone at arm's length.
+const MASTER_VOLUME = 0.8;
+const FADE_IN_S = 0.015;
+const FADE_OUT_S = 0.08;
+const MUTED_KEY = 'cat-sense-muted';
+
 const POSES = {
   want: { src: '/assets/cat/want.webp', emoji: '😻' },
   curious: { src: '/assets/cat/curious.webp', emoji: '🐱' },
@@ -30,6 +40,10 @@ let pose = POSES.curious;
 let leanTimer = null;
 let typeTimer = null;
 let audioContext = null;
+let voice = null;
+let currentClip = null;
+let lastSound = null;
+const clips = new Map();
 
 // A missing picture must not leave an empty corner: the demo falls back to the emoji pose.
 function showEmoji() {
@@ -165,17 +179,102 @@ export function say(text, mood) {
   leanTimer = setTimeout(() => catEl.style.removeProperty('--lean'), LEAN_MS);
 }
 
+// The clips come from different recordings: one shared filter takes off the room rumble below
+// and the hiss above, so they sound as if from the same throat and the same microphone.
+function voiceOutput() {
+  const highpass = audioContext.createBiquadFilter();
+  highpass.type = 'highpass';
+  highpass.frequency.value = VOICE_BAND_HZ.low;
+  const lowpass = audioContext.createBiquadFilter();
+  lowpass.type = 'lowpass';
+  lowpass.frequency.value = VOICE_BAND_HZ.high;
+  const master = audioContext.createGain();
+  master.gain.value = MASTER_VOLUME;
+  highpass.connect(lowpass).connect(master).connect(audioContext.destination);
+  return highpass;
+}
+
+async function loadSounds() {
+  await Promise.all(
+    soundNames().map(async (name) => {
+      try {
+        const response = await fetch(soundPath(name));
+        clips.set(name, await audioContext.decodeAudioData(await response.arrayBuffer()));
+      } catch (error) {
+        console.warn(`Sound ${name} is unavailable`, error);
+      }
+    }),
+  );
+}
+
 // Must run synchronously inside the click: after an await Safari no longer treats it as a gesture.
 export function unlockAudio() {
   if (audioContext) return;
   const AudioContextClass = window.AudioContext ?? window.webkitAudioContext;
   if (!AudioContextClass) return;
+  // Without this an iPhone with the mute switch on plays nothing, and on the stand nobody checks it.
+  if (navigator.audioSession) navigator.audioSession.type = 'playback';
   audioContext = new AudioContextClass();
   audioContext.resume();
+  voice = voiceOutput();
+  loadSounds();
 }
 
-// There are no sound files yet, so the cat stays silent.
-export function playMeow() {}
+function readMuted() {
+  try {
+    return localStorage.getItem(MUTED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+let muted = readMuted();
+
+export function isMuted() {
+  return muted;
+}
+
+// Remembered on this phone: a visitor who turned the cat off should not hear it after a reload.
+export function setMuted(value) {
+  muted = value;
+  if (muted) currentClip?.stop();
+  try {
+    if (muted) localStorage.setItem(MUTED_KEY, '1');
+    else localStorage.removeItem(MUTED_KEY);
+  } catch {
+    // Private mode: the choice only lasts until the page closes.
+  }
+}
+
+// Plays a clip for the mood with a short fade in and out, cutting off the one still playing.
+// Silent when muted, until the clips have loaded, and for a mood without a clip.
+export function playMeow(mood) {
+  if (muted) return;
+  const sound = audioContext && pickSound(mood, lastSound);
+  const buffer = sound && clips.get(sound.src);
+  if (!buffer) return;
+  if (audioContext.state === 'suspended') audioContext.resume();
+  currentClip?.stop();
+
+  const now = audioContext.currentTime;
+  const end = Math.min(sound.end, buffer.duration);
+  const length = (end - sound.start) / sound.rate;
+  const level = dbToGain(sound.gainDb);
+  const gain = audioContext.createGain();
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(level, now + FADE_IN_S);
+  gain.gain.setValueAtTime(level, now + Math.max(FADE_IN_S, length - FADE_OUT_S));
+  gain.gain.linearRampToValueAtTime(0, now + length);
+
+  const source = audioContext.createBufferSource();
+  source.buffer = buffer;
+  source.playbackRate.value = sound.rate;
+  source.connect(gain).connect(voice);
+  // offset and duration are in the clip's own time; the rate changes how long it plays.
+  source.start(now, sound.start, end - sound.start);
+  currentClip = source;
+  lastSound = sound;
+}
 
 // What the cat shows right now, for the saved photo. The thinking dots have no text, so a
 // photo taken mid-thought gets no bubble.
