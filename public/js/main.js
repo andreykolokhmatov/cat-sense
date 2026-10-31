@@ -1,4 +1,4 @@
-import { startCamera } from './camera.js';
+import { refreshCamera, startCamera } from './camera.js';
 import { startCatView } from './catView.js';
 import { currentLine, isMuted, lookAt, playMeow, say, setMuted, think, unlockAudio } from './cat.js';
 import {
@@ -341,6 +341,7 @@ async function handleStart() {
   logLoad(summary);
   intro.hidden = true;
   document.body.classList.remove('is-intro');
+  refreshCamera(video);
   say('Мяу! Тапни по чему-нибудь.', 'happy');
   playMeow('greet');
   listenToTaps();

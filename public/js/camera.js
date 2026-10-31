@@ -16,6 +16,7 @@ const RELAYOUT_DEBOUNCE_MS = 250;
 let stream = null;
 let reopening = false;
 let relayoutTimer = null;
+let listening = false;
 
 function pause(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -76,9 +77,22 @@ function relayoutSoon(video) {
   }, RELAYOUT_DEBOUNCE_MS);
 }
 
+// For the moment the camera comes out from under the loading screen: on a cold start of the
+// Home Screen app the picture laid out under it came out letterboxed too.
+export function refreshCamera(video) {
+  if (video.srcObject) relayoutSoon(video);
+}
+
 // Returns null when the video plays, otherwise a message for the cat to say.
 export async function startCamera(video) {
   if (!window.isSecureContext || !navigator.mediaDevices) return UNSUPPORTED_MESSAGE;
+  // Before the stream opens: iOS sends its first frames at another size, and that resize comes
+  // while openStream is still waiting for play().
+  if (!listening) {
+    listening = true;
+    window.addEventListener('resize', () => relayoutSoon(video));
+    video.addEventListener('resize', () => relayoutSoon(video));
+  }
   try {
     await openStream(video);
   } catch (error) {
@@ -87,7 +101,5 @@ export async function startCamera(video) {
   document.addEventListener('visibilitychange', () => resumeWhenVisible(video));
   // Safari restores pages from its back-forward cache without a visibilitychange.
   window.addEventListener('pageshow', () => resumeWhenVisible(video));
-  window.addEventListener('resize', () => relayoutSoon(video));
-  video.addEventListener('resize', () => relayoutSoon(video));
   return null;
 }
