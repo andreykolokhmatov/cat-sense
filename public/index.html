@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Кошачье чутьё</title>
-  <meta name="theme-color" content="#FA9A3C">
+  <meta name="theme-color" content="#1b0d2c">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -12,7 +12,7 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/assets/cat/curious.webp" type="image/webp">
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
-  <link rel="preload" as="image" href="/assets/cat/curious.webp" fetchpriority="high">
+  <link rel="preload" as="image" href="/assets/halloween/cat-mage.webp" fetchpriority="high">
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; background: #111; color: #eee; font: 16px/1.4 system-ui, sans-serif; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
     [hidden] { display: none !important; }
@@ -134,7 +134,82 @@
     #start { font: inherit; font-size: 18px; font-weight: 700; padding: 15px 32px; border: 0; border-radius: 999px; background: var(--orange); color: var(--ink); box-shadow: 0 8px 24px rgba(250, 154, 60, .35); transition: transform .1s, opacity .2s; }
     #start:active { transform: scale(.96); }
     #start:disabled { opacity: .6; }
-    #intro p { margin: 0; max-width: 300px; font-size: 14px; color: #a1a1a6; }
+    #intro p { margin: 0; max-width: 300px; font-size: 14px; color: #b9a8cc; }
+    /* Halloween dressing: everything decorative sits under the content and never takes a tap. */
+    #intro { overflow: hidden; background: radial-gradient(ellipse at 50% 30%, #3d1f5c 0%, #1d1030 48%, #0c0714 100%); }
+    #intro > :not(.hw-deco) { position: relative; z-index: 1; }
+    #intro h1 span { text-shadow: 0 0 18px rgba(250, 154, 60, .55); }
+    .hw-deco { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+    .hw-deco > img, .patch .cloud { position: absolute; height: auto; -webkit-user-drag: none; }
+    .web { position: absolute; fill: none; stroke: currentColor; stroke-width: .7; stroke-linecap: round; }
+    .moon { position: absolute; top: calc(7% + env(safe-area-inset-top)); right: 12%; width: clamp(56px, 18vw, 90px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 38% 36%, #fff6d6, #f3d48a 70%); box-shadow: 0 0 40px 10px rgba(243, 212, 138, .3); opacity: .9; }
+    #intro .web { top: 0; width: clamp(110px, 34vw, 170px); color: rgba(255, 255, 255, .32); }
+    #intro .web-left { left: 0; }
+    #intro .web-right { right: 0; transform: scaleX(-1); }
+    /* The thread hangs from the top edge: the spider bobs on it, the top stays out of view. */
+    .spider-drop { position: absolute; top: 0; display: flex; flex-direction: column; align-items: center; animation: dangle 5s ease-in-out infinite; }
+    .spider-drop::before { content: ''; width: 1.5px; height: var(--thread); background: rgba(255, 255, 255, .45); }
+    .spider-drop img { width: var(--size); height: auto; margin-top: -6px; -webkit-user-drag: none; }
+    #intro .drop-cute { --thread: 8vh; --size: clamp(44px, 13vw, 64px); left: 10%; }
+    #intro .drop-angry { --thread: 11vh; --size: clamp(40px, 12vw, 56px); right: 20%; animation-duration: 6.5s; animation-delay: -2s; }
+    @keyframes dangle { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-3vh) rotate(3deg); } }
+    .bat { position: absolute; left: 0; font-size: 22px; opacity: .75; animation: fly 16s linear infinite; }
+    .bat-1 { top: 16%; }
+    .bat-2 { top: 26%; font-size: 16px; animation-duration: 21s; animation-delay: -9s; }
+    .bat-3 { top: 9%; font-size: 14px; animation-duration: 25s; animation-delay: -17s; }
+    @keyframes fly { 0% { transform: translate(-12vw, 0); } 25% { transform: translate(20vw, -14px); } 50% { transform: translate(50vw, 8px); } 75% { transform: translate(80vw, -10px); } 100% { transform: translate(112vw, 0); } }
+    .hw-deco .pumpkin-big { left: -5%; bottom: calc(-1% + env(safe-area-inset-bottom)); width: clamp(110px, 32vw, 170px); transform: rotate(-8deg); filter: drop-shadow(0 0 18px rgba(250, 120, 30, .45)); }
+    .hw-deco .pumpkin-small { left: 24%; bottom: calc(9% + env(safe-area-inset-bottom)); width: clamp(42px, 12vw, 64px); transform: rotate(6deg); }
+    /* Cloud hides behind the pumpkin and hops out now and then. */
+    .patch { position: absolute; right: -3%; bottom: calc(1% + env(safe-area-inset-bottom)); width: clamp(100px, 30vw, 150px); }
+    .patch .pumpkin { position: relative; z-index: 1; width: 100%; filter: drop-shadow(0 0 18px rgba(250, 120, 30, .45)); }
+    .patch .cloud { left: 22%; bottom: 38%; width: 56%; animation: peek 5s ease-in-out infinite; }
+    @keyframes peek { 0%, 30% { transform: translateY(30%); } 40% { transform: translateY(-150%); } 46% { transform: translateY(-125%) scale(1.08, .92); } 53% { transform: translateY(-165%); } 62%, 70% { transform: translateY(-130%); } 82%, 100% { transform: translateY(30%); } }
+    .fog { position: absolute; left: 0; right: 0; bottom: 0; height: 30%; background: linear-gradient(rgba(120, 70, 170, 0), rgba(120, 70, 170, .22)); }
+    #intro-cat { position: relative; width: min(54vw, 230px, 28vh); }
+    /* A purple glow flickers under the flame in the mage's paw. */
+    #intro-cat::after { content: ''; position: absolute; left: -4%; top: 44%; width: 34%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, rgba(190, 110, 255, .55), rgba(190, 110, 255, 0) 70%); animation: flicker 1.6s ease-in-out infinite; }
+    @keyframes flicker { 0%, 100% { opacity: .55; transform: scale(1); } 40% { opacity: 1; transform: scale(1.15); } 70% { opacity: .7; transform: scale(.95); } }
+    #intro .credit { position: absolute; z-index: 2; left: 0; right: 0; bottom: calc(14px + env(safe-area-inset-bottom)); font-size: 13px; letter-spacing: .02em; color: rgba(255, 255, 255, .6); text-shadow: 0 1px 6px rgba(0, 0, 0, .8); }
+    #intro .credit b { color: var(--orange); font-weight: 800; }
+    /* The camera panel gets the same costume, quieter: webs in the corners, a spider, pumpkins by the cat. */
+    /* Night purple like the intro: the orange cat and pumpkins stand out against it. */
+    #panel { background: radial-gradient(ellipse at 75% 20%, #4a2570 0%, rgba(74, 37, 112, 0) 60%), linear-gradient(180deg, #2c1645 0%, #1b0d2c 100%); box-shadow: 0 -10px 30px rgba(120, 60, 180, .35); }
+    .panel-buttons button { background: rgba(255, 255, 255, .08); color: #f3e8ff; box-shadow: inset 0 0 0 1.5px rgba(190, 140, 255, .35); }
+    .panel-buttons button:active { background: rgba(190, 140, 255, .22); }
+    .panel-buttons button:focus-visible { outline-color: var(--orange); }
+    #save-button { background: linear-gradient(180deg, #ffb25c, var(--orange)); color: var(--ink); box-shadow: 0 0 16px rgba(250, 154, 60, .45); }
+    #save-button:active { background: var(--orange); }
+    #panel > :not(.panel-deco) { position: relative; z-index: 1; }
+    .panel-deco { position: absolute; inset: 0; z-index: 0; overflow: hidden; border-radius: inherit; pointer-events: none; }
+    .panel-deco > img { position: absolute; height: auto; -webkit-user-drag: none; }
+    .panel-deco .web { width: 74px; color: rgba(255, 255, 255, .22); }
+    .panel-deco .web-tl { top: 0; left: 0; }
+    .panel-deco .web-tr { top: 0; right: 0; transform: scaleX(-1); }
+    .panel-deco .web-bl { bottom: 0; left: 0; width: 52px; transform: scaleY(-1); }
+    .panel-deco .web-br { bottom: 0; right: 0; width: 52px; transform: scale(-1, -1); }
+    /* The thread is longer than the bob, so the spider never reaches the clipped top edge. */
+    #panel .drop-panel { --thread: 30px; --size: 30px; left: 40px; }
+    #panel .drop-panel::before { background: rgba(255, 255, 255, .45); }
+    #panel .drop-panel { animation-name: dangle-small; }
+    @keyframes dangle-small { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-6px) rotate(4deg); } }
+    .panel-deco .pumpkin-cat { right: calc(var(--panel-pad) + env(safe-area-inset-right) + var(--cat-size) * .72); bottom: calc(var(--panel-pad) + env(safe-area-inset-bottom) + var(--buttons-h) + var(--panel-gap) - 2px); width: calc(var(--cat-size) * .26); transform: rotate(-6deg); }
+    .panel-deco .pumpkin-corner { right: calc(var(--panel-pad) + env(safe-area-inset-right) - 8px); bottom: calc(var(--panel-pad) + env(safe-area-inset-bottom) + var(--buttons-h) + var(--panel-gap) - 4px); width: calc(var(--cat-size) * .2); transform: rotate(8deg); }
+    /* "Как это" in the same night costume. */
+    #info { background: linear-gradient(180deg, #2c1645 0%, #1b0d2c 100%); color: #f3e8ff; box-shadow: 0 -10px 30px rgba(120, 60, 180, .35); }
+    #info::backdrop { background: rgba(12, 7, 20, .7); }
+    #info .info-body { position: relative; }
+    #info .info-web { top: 0; right: 0; width: 96px; color: rgba(255, 255, 255, .18); transform: scaleX(-1); pointer-events: none; }
+    #info .sheet-handle { background: rgba(255, 255, 255, .25); }
+    #info .info-head img { background: radial-gradient(circle at 50% 40%, #5b2d86, #2c1645); object-position: 50% 0; box-shadow: 0 0 0 2px rgba(250, 154, 60, .7), 0 0 16px rgba(190, 110, 255, .45); }
+    #info .info-head h2 { color: #fff; }
+    #info .info-head h2::after { content: ' 🎃'; }
+    #info .info-head p { color: #b9a8cc; }
+    #info .info-list li { border-top-color: rgba(190, 140, 255, .18); color: #e6dcf5; }
+    #info .info-list b { color: var(--orange); }
+    #info .info-body form { background: linear-gradient(rgba(27, 13, 44, 0), #1b0d2c 14px); }
+    #info .info-body form button { background: linear-gradient(180deg, #ffb25c, var(--orange)); box-shadow: 0 0 18px rgba(250, 154, 60, .45); }
+    @media (prefers-reduced-motion: reduce) { .spider-drop, .bat, .patch .cloud, #intro-cat::after { animation: none; } .bat { display: none; } .patch .cloud { transform: translateY(-130%); } }
     #debug-crop { position: fixed; left: calc(8px + env(safe-area-inset-left)); top: calc(8px + env(safe-area-inset-top)); width: 120px; border: 2px solid #f5a623; pointer-events: none; }
   </style>
 </head>
@@ -143,6 +218,15 @@
   <video id="video" playsinline muted autoplay></video>
   <canvas id="overlay"></canvas>
   <div id="panel">
+    <div class="panel-deco" aria-hidden="true">
+      <svg class="web web-tl" viewBox="0 0 100 100"><use href="#web"/></svg>
+      <svg class="web web-tr" viewBox="0 0 100 100"><use href="#web"/></svg>
+      <svg class="web web-bl" viewBox="0 0 100 100"><use href="#web"/></svg>
+      <svg class="web web-br" viewBox="0 0 100 100"><use href="#web"/></svg>
+      <div class="spider-drop drop-panel"><img src="/assets/halloween/spider-surprised.webp" alt=""></div>
+      <img class="pumpkin-cat" src="/assets/halloween/pumpkin.webp" alt="">
+      <img class="pumpkin-corner" src="/assets/halloween/pumpkin.webp" alt="">
+    </div>
     <div id="bubble" aria-live="polite"><div class="bubble-text"></div></div>
     <div class="panel-buttons">
       <button id="info-button" type="button" aria-haspopup="dialog">
@@ -161,18 +245,35 @@
     </div>
     <div id="cat" aria-hidden="true"><img id="cat-img" src="/assets/cat/curious.webp" alt="" draggable="false"><img class="blink" src="/assets/cat/blink.webp" alt="" draggable="false"></div>
   </div>
+  <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+    <symbol id="web" viewBox="0 0 100 100"><path d="M0 0L100.0 0.0M0 0L96.6 25.9M0 0L86.6 50.0M0 0L70.7 70.7M0 0L50.0 86.6M0 0L25.9 96.6M0 0L0.0 100.0M22.0 0.0Q18.8 2.5 21.3 5.7Q17.5 7.2 19.1 11.0Q15.0 11.5 15.6 15.6Q11.5 15.0 11.0 19.1Q7.2 17.5 5.7 21.3Q2.5 18.8 0.0 22.0M42.0 0.0Q35.8 4.7 40.6 10.9Q33.4 13.8 36.4 21.0Q28.7 22.0 29.7 29.7Q22.0 28.7 21.0 36.4Q13.8 33.4 10.9 40.6Q4.7 35.8 0.0 42.0M62.0 0.0Q52.9 7.0 59.9 16.0Q49.3 20.4 53.7 31.0Q42.3 32.5 43.8 43.8Q32.5 42.3 31.0 53.7Q20.4 49.3 16.0 59.9Q7.0 52.9 0.0 62.0M82.0 0.0Q69.9 9.2 79.2 21.2Q65.2 27.0 71.0 41.0Q55.9 42.9 58.0 58.0Q42.9 55.9 41.0 71.0Q27.0 65.2 21.2 79.2Q9.2 69.9 0.0 82.0"/></symbol>
+  </svg>
   <section id="intro">
+    <div class="hw-deco" aria-hidden="true">
+      <div class="moon"></div>
+      <svg class="web web-left" viewBox="0 0 100 100"><use href="#web"/></svg>
+      <svg class="web web-right" viewBox="0 0 100 100"><use href="#web"/></svg>
+      <span class="bat bat-1">🦇</span><span class="bat bat-2">🦇</span><span class="bat bat-3">🦇</span>
+      <div class="spider-drop drop-cute"><img src="/assets/halloween/spider-cute.webp" alt=""></div>
+      <div class="spider-drop drop-angry"><img src="/assets/halloween/spider-angry.webp" alt=""></div>
+      <div class="fog"></div>
+      <img class="pumpkin-big" src="/assets/halloween/pumpkin.webp" alt="">
+      <img class="pumpkin-small" src="/assets/halloween/pumpkin.webp" alt="">
+      <div class="patch"><img class="cloud" src="/assets/halloween/cloud.webp" alt=""><img class="pumpkin" src="/assets/halloween/pumpkin.webp" alt=""></div>
+    </div>
     <h1>Кошачье <span>чутьё</span></h1>
     <div id="intro-bubble" aria-live="polite">Мяу! Включи камеру, я посмотрю вместе с тобой.</div>
-    <div id="intro-cat"><img id="intro-img" src="/assets/cat/curious.webp" alt="Рыжий кот" draggable="false" fetchpriority="high"><img class="blink" src="/assets/cat/blink.webp" alt="" draggable="false"></div>
+    <div id="intro-cat"><img id="intro-img" src="/assets/halloween/cat-mage.webp" alt="Рыжий кот в костюме мага" draggable="false" fetchpriority="high"></div>
     <button id="start">Включить камеру</button>
     <p>Тапни по предмету или человеку, и кот скажет, что думает.</p>
+    <footer class="credit">Сделано командой <b>BugBusters</b></footer>
   </section>
   <dialog id="info" aria-labelledby="info-title">
     <div class="info-body">
+      <svg class="web info-web" viewBox="0 0 100 100" aria-hidden="true"><use href="#web"/></svg>
       <div class="sheet-handle" aria-hidden="true"></div>
       <div class="info-head">
-        <img src="/assets/cat/curious.webp" alt="" width="60" height="60">
+        <img src="/assets/halloween/cat-mage.webp" alt="" width="60" height="60">
         <div>
           <!-- autofocus on the title: otherwise the dialog focuses the button at the bottom and opens scrolled down. -->
           <h2 id="info-title" tabindex="-1" autofocus>Как это работает</h2>
