@@ -102,11 +102,12 @@
   .s2 .lead b { color: var(--text); font-weight: 700; }
   .s2 .themes { position: absolute; left: 120px; bottom: 120px; width: 820px; }
   .s2 .themes-title { font: 600 24px var(--body); color: var(--muted); margin-bottom: 18px; }
-  .s2 .row { display: grid; grid-template-columns: 64px 1fr auto; align-items: baseline; padding: 20px 0; border-top: 1.5px solid var(--line); }
+  .s2 .themes-title .theme { color: var(--orange); font-weight: 700; }
+  .s2 .row { display: grid; grid-template-columns: 64px 1fr; align-items: baseline; padding: 20px 0; border-top: 1.5px solid var(--line); }
   .s2 .row:last-child { border-bottom: 1.5px solid var(--line); }
   .s2 .row .n { font: 700 22px var(--display); color: var(--orange); }
   .s2 .row b { font: 800 27px/1.1 var(--display); letter-spacing: -.025em; }
-  .s2 .row i { font: 500 22px var(--body); font-style: normal; color: var(--muted); }
+  .s2 .row i { display: block; margin-top: 6px; font: 500 22px var(--body); font-style: normal; color: var(--muted); }
   .s2 .split { position: absolute; right: 120px; top: 110px; width: 780px; height: 850px; border-radius: 48px; overflow: hidden; box-shadow: 0 60px 120px -30px rgba(0,0,0,.8), inset 0 0 0 2px rgba(255,255,255,.08); }
   .s2 .split img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .s2 .split .cat-layer { clip-path: inset(0 0 0 var(--cut)); }
@@ -249,10 +250,9 @@
       <p class="lead" data-in style="--d:2">Веб-приложение для телефона. Открыл сайт, и мир на экране становится <b>кошачьим</b>: красный и зелёный сливаются, всё чуть мягче. Тапни по чему угодно, и рыжий кот <b>ответит</b>.</p>
     </div>
     <div class="themes" data-in style="--d:4">
-      <div class="themes-title">Темы хакатона, которые закрыли</div>
-      <div class="row"><span class="n">01</span><b>Мир глазами кошки</b><i>кошачье зрение</i></div>
-      <div class="row"><span class="n">02</span><b>Чувствуй</b><i>эмоции людей</i></div>
-      <div class="row"><span class="n">03</span><b>Заткнуть определённого человека</b><i>обида кота</i></div>
+      <div class="themes-title">Тема хакатона <b class="theme">«Чувствуй»</b>. Сделали две идеи из трёх:</div>
+      <div class="row"><span class="n">01</span><div><b>Мир глазами котика</b><i>кошачье зрение и кот, который комментирует мир</i></div></div>
+      <div class="row"><span class="n">02</span><div><b>Шумодав для конкретного человека</b><i>зажми палец на человеке, и кот на него обидится</i></div></div>
     </div>
     <div class="split" data-in="right" style="--d:2">
       <img src="img/shelf-human-cam.webp" alt="">
