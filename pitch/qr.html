@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Кошачье чутьё · QR</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+  :root {
+    --orange: #FA9A3C; --orange-2: #ffb25c; --orange-deep: #e0701c;
+    --night-0: #0f0819; --night-1: #170d27; --night-2: #241440;
+    --violet: #be8cff; --text: #f6efff; --muted: rgba(230, 214, 255, .62); --line: rgba(190, 140, 255, .22);
+    --display: 'Unbounded', system-ui, sans-serif; --body: 'Onest', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #07040c; overflow: hidden; }
+  body { font-family: var(--body); color: var(--text); -webkit-font-smoothing: antialiased; cursor: none; }
+  #stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px; transform-origin: 0 0; overflow: hidden;
+    background:
+      radial-gradient(1000px 700px at 75% 45%, rgba(122, 64, 210, .45), transparent 70%),
+      radial-gradient(900px 600px at 0% 100%, rgba(250, 154, 60, .12), transparent 70%),
+      linear-gradient(180deg, var(--night-2) 0%, var(--night-1) 55%, var(--night-0) 100%); }
+  #stage::after { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .09; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+
+  .mark { position: absolute; left: 120px; top: 96px; display: flex; align-items: center; gap: 16px; font: 600 28px var(--body); color: var(--muted); }
+  .mark img { width: 56px; height: 56px; }
+  .mark b { font: 800 30px var(--display); color: var(--text); letter-spacing: -.02em; }
+
+  h1 { position: absolute; left: 120px; top: 230px; margin: 0; font: 800 132px/.9 var(--display); letter-spacing: -.04em; }
+  h1 span { display: block; }
+  .o { color: var(--orange); }
+
+  .steps { position: absolute; left: 120px; top: 580px; width: 760px; }
+  .step { display: grid; grid-template-columns: 72px 1fr; align-items: baseline; padding: 22px 0; border-top: 1.5px solid var(--line); }
+  .step:last-child { border-bottom: 1.5px solid var(--line); }
+  .step .n { font: 700 24px var(--display); color: var(--orange); }
+  .step b { font: 800 34px/1.1 var(--display); letter-spacing: -.025em; }
+  .step i { display: block; margin-top: 6px; font: 500 24px var(--body); font-style: normal; color: var(--muted); }
+
+  .ring { position: absolute; left: 1010px; top: 70px; width: 940px; height: 940px; border-radius: 50%; border: 2px dashed rgba(190, 140, 255, .18); animation: spin 90s linear infinite; }
+  .sun { position: absolute; left: 1090px; top: 150px; width: 780px; height: 780px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, var(--orange-2), var(--orange) 45%, var(--orange-deep) 100%); box-shadow: 0 0 180px rgba(250, 154, 60, .35); }
+  .card { position: absolute; left: 1180px; top: 230px; width: 600px; padding: 44px 44px 34px; border-radius: 52px; background: #fff; box-shadow: 0 60px 120px -30px rgba(40, 10, 0, .7); transform: rotate(-3deg); animation: bob 5s ease-in-out infinite; }
+  .card .code { width: 512px; height: 512px; display: block; }
+  .card .url { margin-top: 26px; text-align: center; font: 800 34px var(--display); letter-spacing: -.03em; color: #1b0f2c; }
+  .peek { position: absolute; left: 1640px; top: 120px; width: 250px; transform: rotate(14deg); z-index: 2;
+    filter: drop-shadow(4px 0 0 #fff) drop-shadow(-4px 0 0 #fff) drop-shadow(0 4px 0 #fff) drop-shadow(0 -4px 0 #fff) drop-shadow(0 20px 26px rgba(0,0,0,.45)); }
+  .bubble { position: absolute; left: 1130px; top: 90px; z-index: 3; background: #fff; color: #1c1c1e; font: 600 32px/1.2 var(--body); padding: 20px 28px; border-radius: 30px 30px 30px 8px; box-shadow: 0 20px 40px -10px rgba(0,0,0,.5); transform: rotate(-5deg); }
+
+  .foot { position: absolute; left: 120px; bottom: 60px; font: 700 22px var(--display); color: rgba(217, 196, 255, .35); }
+  .foot b { color: rgba(250, 154, 60, .7); font-weight: 700; }
+
+  @keyframes bob { 0%, 100% { transform: rotate(-3deg) translateY(0); } 50% { transform: rotate(-3deg) translateY(-12px); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes breathe { 0%, 100% { transform: rotate(14deg) scale(1); } 50% { transform: rotate(14deg) scale(1.03, .98); } }
+  .peek { animation: breathe 3s ease-in-out infinite; transform-origin: 50% 100%; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="mark"><img src="img/cat/happy.webp" alt="">Команда <b>BugBusters</b></div>
+  <h1><span>Кошачье</span><span class="o">чутьё</span></h1>
+  <div class="steps">
+    <div class="step"><span class="n">01</span><div><b>Сканируй QR</b><i>камерой телефона</i></div></div>
+    <div class="step"><span class="n">02</span><div><b>Разреши камеру</b><i>мир станет кошачьим</i></div></div>
+    <div class="step"><span class="n">03</span><div><b>Тапни по чему угодно</b><i>кот ответит, что думает</i></div></div>
+  </div>
+
+  <div class="ring"></div>
+  <div class="sun"></div>
+  <div class="card">
+    <img class="code" src="img/qr.svg" alt="QR: cat-sense.vercel.app">
+    <div class="url">cat-sense.vercel.app</div>
+  </div>
+  <img class="peek" src="img/cat/want.webp" alt="">
+  <div class="bubble">Наведи на меня камеру!</div>
+
+  <div class="foot">Хакатон <b>«Арена героев»</b></div>
+</div>
+<script>
+  const stage = document.getElementById('stage');
+  function fit() {
+    const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+    stage.style.transform = `scale(${s}) translate(-50%, -50%)`;
+  }
+  addEventListener('resize', fit);
+  addEventListener('keydown', (e) => {
+    if (e.key === 'f' || e.key === 'F' || e.key === 'а' || e.key === 'А') {
+      document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    }
+  });
+  addEventListener('dblclick', () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen());
+  fit();
+</script>
+</body>
+</html>
