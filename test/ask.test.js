@@ -272,7 +272,7 @@ test('system prompt has the confidence, logo and torso rules', () => {
   assert.match(SYSTEM_PROMPT, /ровно в центре/);
   assert.match(SYSTEM_PROMPT, /sure = "low"/);
   assert.match(SYSTEM_PROMPT, /догадка или вопрос/);
-  assert.match(SYSTEM_PROMPT, /белая маска/);
+  assert.match(SYSTEM_PROMPT, /белая или бледно-голубая маска/);
   assert.match(SYSTEM_PROMPT, /не упоминай эталон/);
   assert.match(SYSTEM_PROMPT, /символ Бэтмена/);
   assert.match(SYSTEM_PROMPT, /живая кошка/);

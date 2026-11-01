@@ -38,6 +38,20 @@ test('yellowish white under warm light still counts as the print', () => {
   assert.equal(gate(BLACK, [235, 215, 185], 0.15), true);
 });
 
+test('pale blue mask on a black shirt passes', () => {
+  assert.equal(gate(BLACK, [160, 200, 230], 0.15), true);
+  assert.equal(gate(BLACK, [185, 215, 240], 0.15), true);
+  // Dimmer and cyan-leaning, as the camera may see it.
+  assert.equal(gate(BLACK, [120, 170, 200], 0.15), true);
+  assert.equal(gate(BLACK, [150, 215, 205], 0.15), true);
+});
+
+test('a light blue shirt and a saturated blue print do not pass', () => {
+  assert.equal(gate([160, 200, 230]), false);
+  assert.equal(gate(BLACK, [40, 120, 230], 0.15), false);
+  assert.equal(gate(BLACK, [90, 160, 255], 0.15), false);
+});
+
 test('a speck or a mostly white picture does not pass', () => {
   assert.equal(gate(BLACK, WHITE, 0.01), false);
   assert.equal(gate(BLACK, WHITE, 0.6), false);
