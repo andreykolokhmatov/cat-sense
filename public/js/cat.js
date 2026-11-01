@@ -31,6 +31,7 @@ const emojiEl = document.createElement('span');
 catEl.append(emojiEl);
 let poseName = 'curious';
 let masked = false;
+let maskOffPending = false;
 let equipTimer = null;
 let leanTimer = null;
 let typeTimer = null;
@@ -74,6 +75,10 @@ function restartClass(el, className) {
 
 function show(name) {
   stopEquip();
+  if (maskOffPending) {
+    masked = false;
+    maskOffPending = false;
+  }
   poseName = POSE_NAMES.includes(name) ? name : 'curious';
   emojiEl.textContent = '';
   catImg.hidden = false;
@@ -102,6 +107,7 @@ function playEquip(index) {
 // cat answers already masked. A frame that has not loaded would blink empty, so then the cat
 // just appears in the mask.
 function putMaskOn() {
+  maskOffPending = false;
   if (masked) return;
   masked = true;
   const ready = equipImgs.every((img) => img.complete && img.naturalWidth > 0);
@@ -112,8 +118,16 @@ function putMaskOn() {
   playEquip(0);
 }
 
-function takeMaskOff() {
+// The last masked answer is said and then the mask is counted out in the same breath. Swapping
+// the picture there would show that very answer, say the angry one, without the mask: it would
+// look like the mask flew off mid-emotion. So the mask comes off with the next answer. The
+// timer has no answer to protect and takes it off at once.
+function takeMaskOff({ detail } = {}) {
   if (!masked) return;
+  if (detail?.after === 'tap') {
+    maskOffPending = true;
+    return;
+  }
   masked = false;
   stopEquip();
   if (!catImg.hidden) catImg.src = poseSrc(poseName);
