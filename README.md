@@ -115,4 +115,6 @@ npm test
 
 ## Лицензии
 
+Код, кот, звуки и название проекта: © BugBusters, все права защищены. Смотреть и изучать можно, использовать и распространять нельзя без разрешения авторов.
+
 Файлы в `.claude/` основаны на [labs-harness](https://github.com/ayusavin/labs-harness), MIT, текст лицензии в [.claude/HARNESS-LICENSE](.claude/HARNESS-LICENSE).
