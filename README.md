@@ -1,120 +1,124 @@
-# Кошачье чутьё
+# Cat Sense
 
-Веб-приложение для телефона. Наводишь камеру и видишь мир глазами кошки. Тапаешь по предмету или человеку, и рыжий кот рассказывает, что видит и чего хочет.
+**English** | [Русский](README.ru.md)
 
-**[cat-sense.vercel.app](https://cat-sense.vercel.app/)**: открыть с телефона, ставить ничего не надо.
+A web app for your phone. Point the camera and see the world through a cat's eyes. Tap an object or a person, and a ginger cat tells you what it sees and what it wants.
 
-<p align="center">
-  <img src="docs/screenshots/start.png" width="220" alt="Стартовый экран: кот просит включить камеру">
-  <img src="docs/screenshots/object.webp" width="220" alt="Тап по кружке: кот говорит, что это кружка с летающей свиньёй, и просит воды">
-  <img src="docs/screenshots/grudge.webp" width="220" alt="Обида: злой кот сидит на голове человека">
-</p>
-
-Сделано за 3 дня на хакатоне «Арена героев» командой **BugBusters** (2 человека). Тема хакатона «Чувствуй». Из трёх предложенных идей мы взяли две: «мир глазами котика» и «шумодав для конкретного человека».
-
-## Что умеет
-
-### Кошачье зрение
-
-Кошки различают меньше цветов: красный и зелёный у них сливаются, картинка мягче. Фильтр работает на живом видео, переключатель «Кошка/Человек» показывает разницу.
+**[cat-sense.vercel.app](https://cat-sense.vercel.app/)**: open it on your phone, nothing to install.
 
 <p align="center">
-  <img src="docs/screenshots/cat-vision.png" width="260" alt="Полка с книгами в режиме кошачьего зрения: цвета приглушены, картинка размыта">
-  <img src="docs/screenshots/human-vision.webp" width="260" alt="Та же полка в режиме человека">
+  <img src="docs/screenshots/start.png" width="220" alt="Start screen: the cat asks to turn on the camera">
+  <img src="docs/screenshots/object.webp" width="220" alt="Tapping a mug: the cat says it's a mug with a flying pig and asks for water">
+  <img src="docs/screenshots/grudge.webp" width="220" alt="Grudge: an angry cat sits on a person's head">
 </p>
 
-В основе матрица дейтеранопии (Machado, 2009), плюс насыщенность, размытие и виньетка. Рисуется WebGL-шейдером: Safari на iPhone игнорирует SVG-фильтры на `<video>`. Без WebGL включается запасной CSS-фильтр. Это приближение: точной научной модели кошачьего зрения нет.
+Built in 3 days at the "Arena of Heroes" hackathon by team **BugBusters** (2 people). The hackathon theme was "Feel". Out of the three suggested ideas we took two: "the world through a cat's eyes" and "a noise canceller for one specific person".
 
-### Кот комментирует предметы
+> The app's UI and the cat's lines are in Russian.
 
-Тап по любому предмету: вырезка кадра вокруг пальца уходит в Gemini, и кот отвечает своими словами. Каждую реплику пишет модель. Не уверена, что видит: кот спрашивает или догадывается. Пока модель думает, кот показывает, что размышляет. Если ответ не пришёл за 9,5 секунды, кот говорит запасную фразу из `phrases.json`, и приложение работает дальше.
+## Features
 
-### Кот реагирует на эмоции
+### Cat vision
 
-Тап по лицу: эмоцию (радость, удивление, злость, нейтральное лицо) определяет MediaPipe Face Landmarker прямо на телефоне. На сервер уходит только название эмоции, само лицо не уходит.
+Cats see fewer colors: red and green blend together, and the picture is softer. The filter runs on live video, and the "Cat/Human" toggle shows the difference.
 
-### Обида
+<p align="center">
+  <img src="docs/screenshots/cat-vision.png" width="260" alt="A bookshelf in cat vision mode: muted colors, blurred image">
+  <img src="docs/screenshots/human-vision.webp" width="260" alt="The same shelf in human mode">
+</p>
 
-Это наш вариант «шумодава». Задержи палец на человеке, и кот обидится: сядет ему на голову злым котом и перестанет дружить. Кот помнит обидчика 2 минуты, даже если тот ушёл из кадра, и узнаёт его по цветам волос и одежды и пропорциям лица. Всё считается на телефоне, ничего не хранится и не отправляется. Повторное удержание: мир.
+It's based on a deuteranopia matrix (Machado, 2009), plus saturation, blur and a vignette. It's rendered with a WebGL shader because Safari on iPhone ignores SVG filters on `<video>`. Without WebGL a fallback CSS filter kicks in. This is an approximation: there's no exact scientific model of cat vision.
 
-### Маска героя
+### The cat comments on objects
 
-Пасхалка для стенда. Кот замечает на футболке лого организатора хакатона, надевает маску и несколько реплик отвечает как супергерой.
+Tap any object: a crop of the frame around your finger goes to Gemini, and the cat answers in its own words. Every line is written by the model. If the model isn't sure what it sees, the cat asks or guesses. While the model is thinking, the cat shows that it's pondering. If no answer arrives within 9.5 seconds, the cat says a fallback line from `phrases.json`, and the app keeps going.
 
-### Сохранить кадр
+### The cat reacts to emotions
 
-Кадр с котом и его репликой собирается на canvas и открывается в системном меню «Поделиться». В сеть фото не уходит.
+Tap a face: the emotion (happy, surprised, angry, neutral) is detected by MediaPipe Face Landmarker right on the phone. Only the name of the emotion goes to the server, never the face itself.
 
-## Приватность
+### Grudge
 
-Камера смотрит на людей на стенде, поэтому это продумали с самого начала:
+This is our take on the "noise canceller". Hold your finger on a person and the cat takes offense: it sits on their head as an angry cat and stops being friends. The cat remembers the offender for 2 minutes, even if they leave the frame, and recognizes them by hair and clothing colors and face proportions. Everything is computed on the phone, nothing is stored or sent. Hold again to make peace.
 
-- Лица, люди и эмоции распознаются на телефоне (TensorFlow.js + COCO-SSD, MediaPipe). Видеопоток на сервер не уходит.
-- Сервер получает только вырезку кадра при тапе по предмету. Все лица на ней закрашиваются до отправки. Для лого на футболке отправляется вырезка одежды, и то только если её пропустил локальный фильтр, лица на ней тоже закрашены.
-- Тело без лица программа считает человеком, и тогда картинка не отправляется вовсе. Статуэтки отличаются по уверенности детектора.
-- Цепочка в проде: телефон → функция на Vercel → ProxyAPI (сторонний прокси) → Gemini.
-- Ключ API лежит только в переменных окружения Vercel. Функция ограничивает размер и частоту запросов.
+### Hero mask
 
-## Как устроено
+An Easter egg for the booth. When the cat spots the hackathon organizer's logo on a T-shirt, it puts on a mask and answers like a superhero for a few lines.
+
+### Save a frame
+
+A frame with the cat and its line is composed on a canvas and opened in the system "Share" menu. The photo never goes online.
+
+## Privacy
+
+The camera looks at people at the booth, so we designed for this from the start:
+
+- Faces, people and emotions are recognized on the phone (TensorFlow.js + COCO-SSD, MediaPipe). The video stream never goes to the server.
+- The server only receives a crop of the frame when you tap an object. All faces in it are painted over before sending. For the T-shirt logo, a crop of the clothing is sent, and only if it passed the local filter; faces in it are painted over too.
+- A body without a face is treated as a person, and then no image is sent at all. Figurines are told apart by detector confidence.
+- The production chain: phone → Vercel function → ProxyAPI (third-party proxy) → Gemini.
+- The API key lives only in Vercel environment variables. The function limits request size and rate.
+
+## How it works
 
 ```
-Телефон (браузер)                              Vercel (serverless)
-  камера + WebGL-фильтр
-  COCO-SSD: люди
-  Face Landmarker: лица и эмоции
-  тап
-    |-- кот "думает"
-    `-- POST /api/ask  ------------------------>  проверка входа, лимиты
+Phone (browser)                                Vercel (serverless)
+  camera + WebGL filter
+  COCO-SSD: people
+  Face Landmarker: faces and emotions
+  tap
+    |-- cat is "thinking"
+    `-- POST /api/ask  ------------------------>  input validation, limits
                                                     |
-                                                  Gemini (картинка + промпт кота)
+                                                  Gemini (image + cat prompt)
                                                     |
-        реплика и настроение кота  <-------------- { text, mood, sure }
-        (ошибка или таймаут: фраза из phrases.json)
+        cat's line and mood  <-------------------- { text, mood, sure }
+        (error or timeout: line from phrases.json)
 ```
 
-| Часть | Технология |
+| Part | Technology |
 |---|---|
-| Фронтенд | чистый JavaScript (ES-модули), без фреймворка и сборки |
-| Кошачье зрение | WebGL-шейдер поверх `<video>` |
-| Люди | TensorFlow.js + COCO-SSD |
-| Лица и эмоции | MediaPipe Face Landmarker, blendshapes и правила |
-| Предметы и реплики | Gemini через `/api/ask` |
-| Бэкенд | serverless-функции на Node.js |
-| Хостинг | Vercel: статика из `public/`, функции из `api/` |
-| Тесты | `node --test`, 310 тестов на логику и API |
+| Frontend | plain JavaScript (ES modules), no framework or build step |
+| Cat vision | WebGL shader over `<video>` |
+| People | TensorFlow.js + COCO-SSD |
+| Faces and emotions | MediaPipe Face Landmarker, blendshapes and rules |
+| Objects and lines | Gemini via `/api/ask` |
+| Backend | Node.js serverless functions |
+| Hosting | Vercel: static files from `public/`, functions from `api/` |
+| Tests | `node --test`, 310 tests for logic and API |
 
-Логика без DOM и камеры вынесена в [`public/js/logic/`](public/js/logic/) и покрыта тестами: выбор цели тапа, эмоции по blendshapes, трекинг и узнавание обидчика, фильтр лого, таймауты и запасные фразы. Камеру, анимацию и звук проверяли руками на iPhone.
+Logic without DOM or camera lives in [`public/js/logic/`](public/js/logic/) and is covered by tests: tap target selection, emotions from blendshapes, tracking and recognizing the offender, the logo filter, timeouts and fallback lines. Camera, animation and sound were tested by hand on an iPhone.
 
-Подробнее: [архитектура и контракт API](.memory-bank/architecture.md), [принятые решения](.memory-bank/decisions.md).
+More details (in Russian): [architecture and API contract](.memory-bank/architecture.md), [decisions](.memory-bank/decisions.md).
 
-## Как мы работали
+## How we worked
 
-Код писали вдвоём с [Claude Code](https://claude.com/claude-code), один на Windows, второй на Linux. Процесс взяли из облегчённого [labs-harness](https://github.com/ayusavin/labs-harness):
+We wrote the code together with [Claude Code](https://claude.com/claude-code), one of us on Windows, the other on Linux. The process is based on a lightweight version of [labs-harness](https://github.com/ayusavin/labs-harness):
 
-- **Memory Bank** ([`.memory-bank/`](.memory-bank/)): факты о проекте и решения. Агенты читают его перед любой задачей.
-- **Цикл** `/plan` → `/build` → `/debug` → `/review`: план с критериями приёмки, реализация агентом, которому принадлежат файлы, отладка с воспроизведения, ревью перед деплоем. Планы и отчёты лежат в [`swarm-report/`](swarm-report/).
-- **Тест-гейт**: Stop-хук не даёт агенту сказать «готово», если менялась логика, а тесты не запускались.
+- **Memory Bank** ([`.memory-bank/`](.memory-bank/)): project facts and decisions. Agents read it before any task.
+- **Cycle** `/plan` → `/build` → `/debug` → `/review`: a plan with acceptance criteria, implementation by the agent that owns the files, debugging that starts from a reproduction, review before deploy. Plans and reports are in [`swarm-report/`](swarm-report/).
+- **Test gate**: a Stop hook doesn't let an agent say "done" if logic changed and tests weren't run.
 
-Правила для агентов: [AGENTS.md](AGENTS.md).
+Rules for agents (in Russian): [AGENTS.md](AGENTS.md).
 
-## Запуск локально
+## Running locally
 
-Нужен Node.js 22 или новее. Зависимостей нет.
+You need Node.js 22 or newer. There are no dependencies.
 
 ```bash
 npm run dev
 ```
 
-Сайт откроется на `http://localhost:5173/` вместе с `/api/ask` и `/api/ping`. Ключ Gemini кладётся в `.env` как `GEMINI_API_KEY` (образец в `.env.example`). Без ключа кот говорит запасные фразы. Камера работает на `localhost`, а с другого устройства по Wi-Fi нужен HTTPS.
+The site opens at `http://localhost:5173/` together with `/api/ask` and `/api/ping`. Put the Gemini key in `.env` as `GEMINI_API_KEY` (see `.env.example`). Without a key the cat says fallback lines. The camera works on `localhost`; from another device over Wi-Fi you need HTTPS.
 
 ```bash
 npm test
 ```
 
-Деплой: `npx vercel deploy`. На iPhone удобнее открывать с экрана «Домой» (Safari → Поделиться → На экран «Домой»): так нет интерфейса браузера. Проверка деплоя: `/check.html`.
+Deploy: `npx vercel deploy`. On iPhone it's best opened from the Home Screen (Safari → Share → Add to Home Screen) so there's no browser UI. Deploy check: `/check.html`.
 
-## Лицензии
+## License
 
-Код, кот, звуки и название проекта: © BugBusters, все права защищены. Смотреть и изучать можно, использовать и распространять нельзя без разрешения авторов.
+Code, cat, sounds and project name: © BugBusters, all rights reserved. You may view and study it, but you may not use or distribute it without the authors' permission.
 
-Файлы в `.claude/` основаны на [labs-harness](https://github.com/ayusavin/labs-harness), MIT, текст лицензии в [.claude/HARNESS-LICENSE](.claude/HARNESS-LICENSE).
+Files in `.claude/` are based on [labs-harness](https://github.com/ayusavin/labs-harness), MIT, license text in [.claude/HARNESS-LICENSE](.claude/HARNESS-LICENSE).
